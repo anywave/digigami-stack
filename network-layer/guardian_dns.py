@@ -4,6 +4,13 @@ DNS-Level Consent Enforcement Layer
 
 This service runs on a home router, Pi-hole, or as a NextDNS-style cloud DNS resolver.
 It intercepts DNS queries and enforces consent rules BEFORE sites can load.
+
+Features:
+- DNS filtering with category-based blocking
+- Age verification and consent management
+- NextDNS partnership API integration for enhanced filtering
+- Cloud sync with DIGIGAMI backend
+- Admin dashboard with bypass management
 """
 
 import asyncio
@@ -11,6 +18,7 @@ import aiohttp
 import json
 import hashlib
 import logging
+import os
 from dataclasses import dataclass
 from typing import Optional, Dict, List, Set
 from datetime import datetime, timedelta
@@ -25,6 +33,17 @@ try:
 except ImportError:
     print("Install dnslib: pip install dnslib")
 
+# NextDNS Integration
+try:
+    from nextdns_client import (
+        NextDNSClient, NextDNSConfig, NextDNSIntegration,
+        map_digigami_to_nextdns, map_nextdns_to_digigami
+    )
+    NEXTDNS_AVAILABLE = True
+except ImportError:
+    NEXTDNS_AVAILABLE = False
+    print("NextDNS integration not available (optional)")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("digigami-network")
 
@@ -35,21 +54,52 @@ class Config:
     dns_port: int = 53
     upstream_dns: str = "8.8.8.8"
     upstream_port: int = 53
-    
+
     # Cloud sync
     cloud_api: str = "https://api.digigami.ai/v1"
     sync_interval: int = 30  # seconds
-    
+
     # Block page
     block_page_ip: str = "192.168.1.1"  # Router IP serving block page
-    
+
     # Local database
     db_path: str = "/var/lib/digigami/guardian.db"
-    
+
     # Network identification
     network_id: str = ""  # Set during registration
 
-config = Config()
+    # NextDNS Partnership Settings
+    nextdns_enabled: bool = False
+    nextdns_api_key: str = ""
+    nextdns_profile_id: str = ""
+    nextdns_use_blocklists: bool = True
+    nextdns_use_analytics: bool = True
+    nextdns_sync_interval: int = 300  # 5 minutes
+
+def load_config_from_env() -> Config:
+    """Load configuration from environment variables"""
+    return Config(
+        dns_port=int(os.environ.get("DNS_PORT", "53")),
+        upstream_dns=os.environ.get("UPSTREAM_DNS", "8.8.8.8"),
+        upstream_port=int(os.environ.get("UPSTREAM_PORT", "53")),
+        cloud_api=os.environ.get("DIGIGAMI_CLOUD_URL", "https://api.digigami.ai/v1"),
+        sync_interval=int(os.environ.get("SYNC_INTERVAL", "30")),
+        block_page_ip=os.environ.get("BLOCK_PAGE_IP", "192.168.1.1"),
+        db_path=os.environ.get("DB_PATH", "/var/lib/digigami/guardian.db"),
+        network_id=os.environ.get("NETWORK_ID", ""),
+        nextdns_enabled=os.environ.get("NEXTDNS_ENABLED", "false").lower() == "true",
+        nextdns_api_key=os.environ.get("NEXTDNS_API_KEY", ""),
+        nextdns_profile_id=os.environ.get("NEXTDNS_PROFILE_ID", ""),
+        nextdns_use_blocklists=os.environ.get("NEXTDNS_USE_BLOCKLISTS", "true").lower() == "true",
+        nextdns_use_analytics=os.environ.get("NEXTDNS_USE_ANALYTICS", "true").lower() == "true",
+        nextdns_sync_interval=int(os.environ.get("NEXTDNS_SYNC_INTERVAL", "300")),
+    )
+
+config = load_config_from_env()
+
+# NextDNS client instance (initialized if enabled)
+nextdns_client: Optional["NextDNSClient"] = None
+nextdns_integration: Optional["NextDNSIntegration"] = None
 
 # ============ CATEGORY DEFINITIONS ============
 DOMAIN_CATEGORIES = {
@@ -324,51 +374,123 @@ def check_consent(device_id: str, domain: str, category: str) -> dict:
 class DigigamiResolver(BaseResolver):
     """
     Custom DNS resolver that enforces DIGIGAMI consent rules.
+    Integrates with NextDNS for enhanced filtering when enabled.
     """
-    
+
     def __init__(self, upstream: str, upstream_port: int):
         self.upstream = upstream
         self.upstream_port = upstream_port
-    
+        self._loop = None
+
+    def _get_loop(self):
+        """Get or create event loop for async operations"""
+        if self._loop is None or self._loop.is_closed():
+            try:
+                self._loop = asyncio.get_running_loop()
+            except RuntimeError:
+                self._loop = asyncio.new_event_loop()
+        return self._loop
+
     def resolve(self, request, handler):
         """Handle DNS query"""
         qname = str(request.q.qname).rstrip(".")
         qtype = QTYPE[request.q.qtype]
         client_ip = handler.client_address[0]
-        
+
         logger.debug(f"DNS Query: {qname} ({qtype}) from {client_ip}")
-        
+
         # Only filter A records
         if qtype != "A":
             return self._forward_query(request)
-        
-        # Categorize the domain
+
+        device_id = client_ip  # In production, use MAC address
+
+        # Check NextDNS blocklists first (if enabled)
+        if config.nextdns_enabled and nextdns_integration:
+            nextdns_result = self._check_nextdns_sync(qname)
+            if nextdns_result and nextdns_result.get("blocked"):
+                logger.info(f"BLOCKED (NextDNS): {qname} for {client_ip} - {nextdns_result.get('reason')}")
+                profile_cache.log_block(
+                    device_id, qname,
+                    nextdns_result.get("category", "nextdns"),
+                    nextdns_result.get("reason", "nextdns_blocklist")
+                )
+                # Report to NextDNS analytics
+                self._report_nextdns_block(device_id, qname, nextdns_result)
+                return self._block_response(request, qname)
+
+        # Categorize the domain locally
         category = categorize_domain(qname)
-        
+
         if category:
             # Check consent for this device
-            device_id = client_ip  # In production, use MAC address
             consent_result = check_consent(device_id, qname, category)
-            
+
             if not consent_result["allowed"]:
                 logger.info(f"BLOCKED: {qname} ({category}) for {client_ip} - {consent_result['reason']}")
-                
+
                 # Log the block
                 profile_cache.log_block(
                     device_id, qname, category, consent_result["reason"]
                 )
-                
+
                 # Send push notification (async)
                 asyncio.create_task(
                     send_block_notification(device_id, qname, consent_result)
                 )
-                
+
+                # Report to NextDNS analytics if enabled
+                if config.nextdns_enabled and nextdns_integration:
+                    self._report_nextdns_block(device_id, qname, {
+                        "category": category,
+                        "reason": consent_result["reason"]
+                    })
+
                 # Return block page IP
                 return self._block_response(request, qname)
-        
+
+        # Report allowed query to NextDNS
+        if config.nextdns_enabled and nextdns_integration:
+            self._report_nextdns_allow(device_id, qname)
+
         # Forward to upstream DNS
         return self._forward_query(request)
-    
+
+    def _check_nextdns_sync(self, domain: str) -> Optional[Dict]:
+        """Check domain against NextDNS blocklists (sync wrapper)"""
+        try:
+            loop = self._get_loop()
+            future = asyncio.run_coroutine_threadsafe(
+                nextdns_integration.check_domain(domain),
+                loop
+            )
+            return future.result(timeout=2)
+        except Exception as e:
+            logger.debug(f"NextDNS check error: {e}")
+            return None
+
+    def _report_nextdns_block(self, device_id: str, domain: str, result: Dict):
+        """Report block event to NextDNS (async)"""
+        try:
+            asyncio.create_task(
+                nextdns_integration.report_block_event(
+                    device_id, domain,
+                    result.get("category", "unknown"),
+                    result.get("reason", "blocked")
+                )
+            )
+        except Exception as e:
+            logger.debug(f"NextDNS report error: {e}")
+
+    def _report_nextdns_allow(self, device_id: str, domain: str):
+        """Report allowed query to NextDNS (async)"""
+        try:
+            asyncio.create_task(
+                nextdns_integration.report_allow_event(device_id, domain)
+            )
+        except Exception as e:
+            logger.debug(f"NextDNS report error: {e}")
+
     def _forward_query(self, request) -> DNSRecord:
         """Forward query to upstream DNS"""
         try:
@@ -377,7 +499,7 @@ class DigigamiResolver(BaseResolver):
         except Exception as e:
             logger.error(f"Upstream DNS error: {e}")
             return request.reply()
-    
+
     def _block_response(self, request, qname: str) -> DNSRecord:
         """Return a response pointing to the block page"""
         reply = request.reply()
@@ -589,34 +711,93 @@ async def start_block_page_server():
     await site.start()
     logger.info("Block page server started on port 80")
 
+# ============ NEXTDNS INITIALIZATION ============
+async def init_nextdns():
+    """Initialize NextDNS integration if configured"""
+    global nextdns_client, nextdns_integration
+
+    if not config.nextdns_enabled:
+        logger.info("NextDNS integration disabled")
+        return
+
+    if not NEXTDNS_AVAILABLE:
+        logger.warning("NextDNS module not available - skipping integration")
+        return
+
+    if not config.nextdns_api_key or not config.nextdns_profile_id:
+        logger.warning("NextDNS API key or profile ID not configured")
+        return
+
+    try:
+        nextdns_config = NextDNSConfig(
+            api_key=config.nextdns_api_key,
+            profile_id=config.nextdns_profile_id,
+            use_nextdns_blocklists=config.nextdns_use_blocklists,
+            use_nextdns_analytics=config.nextdns_use_analytics,
+            sync_interval=config.nextdns_sync_interval,
+        )
+
+        nextdns_client = NextDNSClient(nextdns_config)
+        nextdns_integration = NextDNSIntegration(nextdns_client)
+
+        # Start the integration (background sync tasks)
+        await nextdns_integration.start()
+
+        # Verify connection by fetching profile
+        profile = await nextdns_client.get_profile()
+        if profile:
+            logger.info(f"NextDNS integration active - Profile: {profile.get('name', config.nextdns_profile_id)}")
+        else:
+            logger.warning("NextDNS connection established but profile not found")
+
+    except Exception as e:
+        logger.error(f"NextDNS initialization error: {e}")
+        nextdns_client = None
+        nextdns_integration = None
+
+
+async def shutdown_nextdns():
+    """Gracefully shutdown NextDNS integration"""
+    global nextdns_integration
+    if nextdns_integration:
+        await nextdns_integration.stop()
+        logger.info("NextDNS integration stopped")
+
+
 # ============ MAIN ============
 def main():
     """Start the DIGIGAMI Network Guardian"""
     logger.info("Starting DIGIGAMI Network Guardian")
-    
+    logger.info(f"Config: DNS={config.upstream_dns}:{config.upstream_port}, NextDNS={config.nextdns_enabled}")
+
     # Create DNS resolver
     resolver = DigigamiResolver(config.upstream_dns, config.upstream_port)
-    
+
     # Start DNS server
     dns_server = DNSServer(resolver, port=config.dns_port, address="0.0.0.0")
     dns_server.start_thread()
     logger.info(f"DNS server started on port {config.dns_port}")
-    
+
     # Start async services
     loop = asyncio.get_event_loop()
-    
+
+    # Initialize NextDNS integration
+    loop.run_until_complete(init_nextdns())
+
     # Start block page server
     loop.run_until_complete(start_block_page_server())
-    
+
     # Start sync loop
     loop.create_task(sync_loop())
-    
+
     # Keep running
     try:
         loop.run_forever()
     except KeyboardInterrupt:
         logger.info("Shutting down...")
+        loop.run_until_complete(shutdown_nextdns())
         dns_server.stop()
+
 
 if __name__ == "__main__":
     main()

@@ -29,6 +29,13 @@ services:
       - UPSTREAM_PORT=${UPSTREAM_PORT:-53}
       - BLOCK_PAGE_IP=${BLOCK_PAGE_IP:-192.168.1.100}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # NextDNS Partnership Integration
+      - NEXTDNS_ENABLED=${NEXTDNS_ENABLED:-false}
+      - NEXTDNS_API_KEY=${NEXTDNS_API_KEY}
+      - NEXTDNS_PROFILE_ID=${NEXTDNS_PROFILE_ID}
+      - NEXTDNS_USE_BLOCKLISTS=${NEXTDNS_USE_BLOCKLISTS:-true}
+      - NEXTDNS_USE_ANALYTICS=${NEXTDNS_USE_ANALYTICS:-true}
+      - NEXTDNS_SYNC_INTERVAL=${NEXTDNS_SYNC_INTERVAL:-300}
     volumes:
       - guardian_data:/var/lib/digigami
     networks:
