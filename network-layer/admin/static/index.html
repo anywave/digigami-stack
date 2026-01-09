@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Guardian Admin</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+  <div id="app">
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen">
+      <div class="login-container">
+        <div class="login-header">
+          <div class="logo">🛡️</div>
+          <h1>DIGIGAMI Guardian</h1>
+          <p>Admin Dashboard</p>
+        </div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="admin" autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter admin secret" autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+          <p id="login-error" class="error-text"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-screen" class="screen hidden">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="logo">🛡️</span>
+          <span class="title">Guardian</span>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item active" data-page="dashboard">
+            <span class="icon">📊</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="#" class="nav-item" data-page="devices">
+            <span class="icon">📱</span>
+            <span>Devices</span>
+          </a>
+          <a href="#" class="nav-item" data-page="logs">
+            <span class="icon">📋</span>
+            <span>Block Logs</span>
+          </a>
+          <a href="#" class="nav-item" data-page="requests">
+            <span class="icon">🔔</span>
+            <span>Bypass Requests</span>
+            <span id="request-badge" class="badge hidden">0</span>
+          </a>
+          <a href="#" class="nav-item" data-page="bypasses">
+            <span class="icon">🔓</span>
+            <span>Active Bypasses</span>
+          </a>
+          <a href="#" class="nav-item" data-page="audit">
+            <span class="icon">📝</span>
+            <span>Audit Log</span>
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <button id="logout-btn" class="btn btn-secondary btn-full">Sign Out</button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Dashboard Page -->
+        <section id="page-dashboard" class="page">
+          <header class="page-header">
+            <h2>Dashboard</h2>
+            <button class="btn btn-secondary" onclick="loadDashboard()">↻ Refresh</button>
+          </header>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">🚫</div>
+              <div class="stat-content">
+                <div class="stat-value" id="stat-blocks">-</div>
+                <div class="stat-label">Blocks Today</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📱</div>
+              <div class="stat-content">
+                <div class="stat-value" id="stat-devices">-</div>
+                <div class="stat-label">Active Devices</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">👥</div>
+              <div class="stat-content">
+                <div class="stat-value" id="stat-profiles">-</div>
+                <div class="stat-label">Profiles</div>
+              </div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-icon">⏳</div>
+              <div class="stat-content">
+                <div class="stat-value" id="stat-pending">-</div>
+                <div class="stat-label">Pending Requests</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card">
+              <h3>Blocks by Category</h3>
+              <div id="category-chart" class="chart-container"></div>
+            </div>
+            <div class="card">
+              <h3>Recent Blocks</h3>
+              <div id="recent-blocks" class="table-container"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Devices Page -->
+        <section id="page-devices" class="page hidden">
+          <header class="page-header">
+            <h2>Devices</h2>
+            <button class="btn btn-secondary" onclick="loadDevices()">↻ Refresh</button>
+          </header>
+          <div class="card">
+            <div id="devices-list" class="table-container"></div>
+          </div>
+        </section>
+
+        <!-- Block Logs Page -->
+        <section id="page-logs" class="page hidden">
+          <header class="page-header">
+            <h2>Block Logs</h2>
+            <div class="header-actions">
+              <select id="log-category-filter" class="select">
+                <option value="">All Categories</option>
+                <option value="gambling">Gambling</option>
+                <option value="alcohol">Alcohol</option>
+                <option value="adult">Adult</option>
+                <option value="social_media">Social Media</option>
+                <option value="streaming">Streaming</option>
+              </select>
+              <button class="btn btn-secondary" onclick="loadLogs()">↻ Refresh</button>
+            </div>
+          </header>
+          <div class="card">
+            <div id="logs-list" class="table-container"></div>
+            <div id="logs-pagination" class="pagination"></div>
+          </div>
+        </section>
+
+        <!-- Bypass Requests Page -->
+        <section id="page-requests" class="page hidden">
+          <header class="page-header">
+            <h2>Bypass Requests</h2>
+            <div class="header-actions">
+              <select id="request-status-filter" class="select" onchange="loadBypassRequests()">
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="denied">Denied</option>
+              </select>
+            </div>
+          </header>
+          <div class="card">
+            <div id="requests-list" class="table-container"></div>
+          </div>
+        </section>
+
+        <!-- Active Bypasses Page -->
+        <section id="page-bypasses" class="page hidden">
+          <header class="page-header">
+            <h2>Active Bypasses</h2>
+            <button class="btn btn-primary" onclick="showGrantBypassModal()">+ Grant Bypass</button>
+          </header>
+          <div class="card">
+            <div id="bypasses-list" class="table-container"></div>
+          </div>
+        </section>
+
+        <!-- Audit Log Page -->
+        <section id="page-audit" class="page hidden">
+          <header class="page-header">
+            <h2>Audit Log</h2>
+            <button class="btn btn-secondary" onclick="loadAuditLog()">↻ Refresh</button>
+          </header>
+          <div class="card">
+            <div id="audit-list" class="table-container"></div>
+            <div id="audit-pagination" class="pagination"></div>
+          </div>
+        </section>
+
+        <!-- Device Detail Page -->
+        <section id="page-device-detail" class="page hidden">
+          <header class="page-header">
+            <button class="btn btn-secondary" onclick="showPage('devices')">← Back</button>
+            <h2 id="device-detail-title">Device Details</h2>
+          </header>
+          <div id="device-detail-content"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div id="modal-content" class="modal"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

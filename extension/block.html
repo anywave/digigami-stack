@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Guardian - Content Blocked</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f19 0%, #1a1a2e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 520px;
+      padding: 48px;
+      text-align: center;
+    }
+
+    .avatar {
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 36px;
+    }
+
+    .avatar svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .avatar-ring {
+      fill: none;
+      stroke: #6366f1;
+      stroke-width: 2;
+      animation: ring-pulse 3s ease-in-out infinite;
+    }
+
+    .avatar-core {
+      fill: #4f46e5;
+    }
+
+    @keyframes ring-pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 0.9; }
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #ffffff;
+    }
+
+    .reason {
+      font-size: 18px;
+      line-height: 1.6;
+      color: #a0a0a0;
+      margin-bottom: 24px;
+    }
+
+    .details {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      color: #888;
+      font-size: 14px;
+    }
+
+    .detail-value {
+      color: #818cf8;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .detail-value.warning {
+      color: #f59e0b;
+    }
+
+    .detail-value.danger {
+      color: #ef4444;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .btn {
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #a0a0a0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .footer {
+      font-size: 14px;
+      color: #555;
+      font-style: italic;
+    }
+
+    .exception-form {
+      display: none;
+      margin-top: 24px;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      text-align: left;
+    }
+
+    .exception-form.visible {
+      display: block;
+    }
+
+    .exception-form h3 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      color: #c0c0c0;
+    }
+
+    .exception-form textarea {
+      width: 100%;
+      height: 100px;
+      padding: 14px;
+      font-size: 14px;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #e0e0e0;
+      resize: none;
+      margin-bottom: 16px;
+    }
+
+    .exception-form textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .status {
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success {
+      display: block;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #4ade80;
+    }
+
+    .status.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="avatar">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" class="avatar-ring"/>
+        <circle cx="50" cy="50" r="35" class="avatar-core"/>
+      </svg>
+    </div>
+
+    <h1>Content Blocked</h1>
+
+    <p class="reason" id="reasonText">
+      This content has been blocked based on your consent preferences.
+    </p>
+
+    <div class="details" id="details">
+      <!-- Populated by JavaScript -->
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="goBackBtn">
+        Go Back
+      </button>
+      <button class="btn btn-secondary" id="requestExceptionBtn">
+        Request Exception
+      </button>
+    </div>
+
+    <div class="exception-form" id="exceptionForm">
+      <h3>Why do you need access?</h3>
+      <textarea id="exceptionReason" placeholder="Explain why you need to access this content..."></textarea>
+      <button class="btn btn-primary" id="submitException" style="width: 100%;">
+        Send to Guardian
+      </button>
+      <div class="status" id="exceptionStatus"></div>
+    </div>
+
+    <p class="footer">
+      DIGIGAMI supports your autonomy while honoring your commitments.
+    </p>
+  </div>
+
+  <script>
+    // Parse the reason from URL
+    const params = new URLSearchParams(window.location.search);
+    let blockData = {};
+
+    try {
+      blockData = JSON.parse(decodeURIComponent(params.get('reason') || '{}'));
+    } catch (e) {
+      console.error('Failed to parse block data:', e);
+    }
+
+    // Build details display
+    const detailsEl = document.getElementById('details');
+    const reasonText = document.getElementById('reasonText');
+
+    const reasonMessages = {
+      'age_restricted': 'This content requires age verification.',
+      'category_blocked': 'This category is blocked in your consent settings.',
+      'time_limit_exceeded': 'You have exceeded your time limit for this category today.',
+    };
+
+    if (blockData.reason) {
+      reasonText.textContent = reasonMessages[blockData.reason] || 'Access has been restricted.';
+    }
+
+    let detailsHtml = '';
+
+    if (blockData.category) {
+      detailsHtml += `
+        <div class="detail-row">
+          <span class="detail-label">Category</span>
+          <span class="detail-value">${blockData.category}</span>
+        </div>
+      `;
+    }
+
+    if (blockData.severity) {
+      const severityClass = blockData.severity === 'high' ? 'danger' :
+                           blockData.severity === 'medium' ? 'warning' : '';
+      detailsHtml += `
+        <div class="detail-row">
+          <span class="detail-label">Severity</span>
+          <span class="detail-value ${severityClass}">${blockData.severity}</span>
+        </div>
+      `;
+    }
+
+    if (blockData.requiredAge && blockData.userAge) {
+      detailsHtml += `
+        <div class="detail-row">
+          <span class="detail-label">Required Age</span>
+          <span class="detail-value">${blockData.requiredAge}+</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Your Age</span>
+          <span class="detail-value warning">${blockData.userAge}</span>
+        </div>
+      `;
+    }
+
+    if (blockData.timeSpent !== undefined && blockData.limit) {
+      detailsHtml += `
+        <div class="detail-row">
+          <span class="detail-label">Time Spent Today</span>
+          <span class="detail-value warning">${blockData.timeSpent} min</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Daily Limit</span>
+          <span class="detail-value">${blockData.limit} min</span>
+        </div>
+      `;
+    }
+
+    if (detailsHtml) {
+      detailsEl.innerHTML = detailsHtml;
+    } else {
+      detailsEl.style.display = 'none';
+    }
+
+    // Event listeners
+    document.getElementById('goBackBtn').addEventListener('click', () => {
+      window.history.back();
+    });
+
+    document.getElementById('requestExceptionBtn').addEventListener('click', () => {
+      document.getElementById('exceptionForm').classList.toggle('visible');
+    });
+
+    document.getElementById('submitException').addEventListener('click', async () => {
+      const reason = document.getElementById('exceptionReason').value;
+      const statusEl = document.getElementById('exceptionStatus');
+
+      if (!reason.trim()) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Please provide a reason for your request.';
+        return;
+      }
+
+      try {
+        const response = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            type: 'REQUEST_EXCEPTION',
+            url: blockData.url || window.location.href,
+            reason: reason,
+          }, resolve);
+        });
+
+        if (response?.success) {
+          statusEl.className = 'status success';
+          statusEl.textContent = 'Request sent to your guardian. You will be notified of their decision.';
+        } else {
+          statusEl.className = 'status error';
+          statusEl.textContent = response?.error || 'Failed to send request.';
+        }
+      } catch (e) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Error: ' + e.message;
+      }
+    });
+  </script>
+</body>
+</html>

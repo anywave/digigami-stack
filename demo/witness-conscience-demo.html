@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Witness & Conscience Demo</title>
+  <style>
+    :root {
+      --pink: #d16ba5;
+      --coral: #f28d7d;
+      --orange: #f0856a;
+      --yellow: #f3e06e;
+      --green: #5bd6a2;
+      --cyan: #5ed5d5;
+      --blue: #5da5d5;
+      --purple: #9b6dd6;
+      --dark: #0a0a0f;
+      --dark-card: #12121a;
+      --grid: #1a1a2f;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--dark);
+      color: white;
+      min-height: 100vh;
+    }
+    
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 2rem 1rem;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      background: linear-gradient(135deg, var(--cyan), var(--purple), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .header p { color: #888; margin-top: 0.5rem; }
+    
+    /* Mode Toggle */
+    .mode-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: var(--dark-card);
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .mode-btn {
+      padding: 1rem 2rem;
+      background: var(--grid);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .mode-btn:hover { border-color: var(--cyan); }
+    .mode-btn.active { border-color: var(--cyan); background: rgba(94, 213, 213, 0.15); }
+    .mode-btn .icon { font-size: 1.5rem; }
+    .mode-btn .label { font-weight: 600; }
+    
+    /* Main Content */
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    @media (max-width: 1000px) {
+      .main-content { grid-template-columns: 1fr; }
+    }
+    
+    /* Scenario Panel */
+    .scenario-panel {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    
+    .scenario-header {
+      padding: 1rem 1.5rem;
+      background: var(--grid);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .scenario-header .icon { font-size: 1.5rem; }
+    .scenario-header h2 { font-size: 1.1rem; }
+    
+    .scenario-content {
+      padding: 1.5rem;
+      min-height: 400px;
+    }
+    
+    /* Scenario Cards */
+    .scenario-card {
+      background: var(--grid);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid transparent;
+    }
+    
+    .scenario-card:hover { border-color: var(--cyan); transform: translateX(4px); }
+    .scenario-card.active { border-color: var(--cyan); background: rgba(94, 213, 213, 0.1); }
+    
+    .scenario-card .title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .scenario-card .desc {
+      font-size: 0.875rem;
+      color: #aaa;
+      line-height: 1.5;
+    }
+    
+    /* Simulation Area */
+    .simulation-area {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .simulation-area.active { display: flex; }
+    
+    .sim-scene {
+      background: var(--grid);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .sim-scene .scene-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .sim-scene .scene-text { color: #ccc; line-height: 1.6; max-width: 400px; }
+    
+    /* Digigami Response */
+    .digi-response {
+      background: linear-gradient(135deg, rgba(94, 213, 213, 0.1), rgba(155, 109, 214, 0.1));
+      border: 1px solid var(--cyan);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    
+    .digi-response .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    
+    .digi-response .message { flex: 1; }
+    .digi-response .message .type {
+      font-size: 0.75rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+    }
+    .digi-response .message p { color: #ddd; line-height: 1.6; }
+    
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    
+    .action-btn {
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--grid);
+      background: var(--dark-card);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.875rem;
+    }
+    
+    .action-btn:hover { border-color: var(--cyan); }
+    .action-btn.primary {
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border: none;
+      color: var(--dark);
+      font-weight: 600;
+    }
+    .action-btn.danger { border-color: var(--coral); color: var(--coral); }
+    
+    /* Right Panel */
+    .info-panel { display: flex; flex-direction: column; gap: 1rem; }
+    
+    .info-card {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    
+    .info-card h3 {
+      font-size: 0.85rem;
+      color: var(--purple);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.75rem;
+    }
+    
+    /* Status Indicators */
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .status-row:last-child { border-bottom: none; }
+    .status-row .label { color: #888; font-size: 0.85rem; }
+    .status-row .value { font-size: 0.85rem; font-weight: 500; }
+    .status-row .value.active { color: var(--green); }
+    .status-row .value.recording { color: var(--coral); animation: pulse 1s infinite; }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Recording Indicator */
+    .recording-banner {
+      display: none;
+      background: linear-gradient(135deg, var(--coral), var(--pink));
+      padding: 0.75rem 1rem;
+      text-align: center;
+      font-weight: 600;
+      animation: recording-pulse 2s infinite;
+    }
+    
+    .recording-banner.active { display: block; }
+    
+    @keyframes recording-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    
+    /* Values Checklist */
+    .values-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .value-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: var(--grid);
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+    
+    .value-item .check { color: var(--green); }
+    .value-item.active { border-left: 3px solid var(--cyan); }
+    
+    /* Timeline */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .timeline-item {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.5rem;
+      background: var(--grid);
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    
+    .timeline-item .time {
+      color: var(--cyan);
+      font-family: monospace;
+      min-width: 50px;
+    }
+    
+    .timeline-item .event { color: #ccc; }
+    
+    /* Drill Mode */
+    .drill-progress {
+      height: 8px;
+      background: var(--grid);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    
+    .drill-progress .fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    
+    .drill-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .drill-option {
+      padding: 1rem;
+      background: var(--grid);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+    
+    .drill-option:hover { border-color: var(--cyan); }
+    .drill-option.correct { border-color: var(--green); background: rgba(93, 214, 162, 0.1); }
+    .drill-option.incorrect { border-color: var(--coral); background: rgba(242, 141, 125, 0.1); }
+    
+    /* Biometrics Display */
+    .biometrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+    
+    .bio-item {
+      background: var(--grid);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    
+    .bio-item .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .bio-item .label {
+      font-size: 0.7rem;
+      color: #888;
+      margin-top: 0.25rem;
+    }
+    
+    /* Evidence Package */
+    .evidence-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: var(--grid);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      font-size: 0.8rem;
+    }
+    
+    .evidence-item .icon { font-size: 1rem; }
+    .evidence-item .captured { color: var(--green); }
+    .evidence-item .pending { color: var(--yellow); }
+  </style>
+</head>
+<body>
+  <!-- Recording Banner -->
+  <div class="recording-banner" id="recording-banner">
+    🔴 WITNESS MODE ACTIVE - Recording in progress
+  </div>
+
+  <header class="header">
+    <h1>🛡️ DIGIGAMI Witness & Conscience</h1>
+    <p>Self-sovereign protection and ethical guidance</p>
+  </header>
+  
+  <!-- Mode Toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="witness">
+      <span class="icon">👁️</span>
+      <span class="label">Witness Mode</span>
+    </button>
+    <button class="mode-btn" data-mode="conscience">
+      <span class="icon">💭</span>
+      <span class="label">Conscience Mode</span>
+    </button>
+    <button class="mode-btn" data-mode="drill">
+      <span class="icon">🎯</span>
+      <span class="label">Private Drill</span>
+    </button>
+    <button class="mode-btn" data-mode="social">
+      <span class="icon">🤝</span>
+      <span class="label">Social Coach</span>
+    </button>
+  </div>
+  
+  <div class="main-content">
+    <!-- Scenario Panel -->
+    <div class="scenario-panel">
+      <div class="scenario-header">
+        <span class="icon" id="panel-icon">👁️</span>
+        <h2 id="panel-title">Witness Mode Scenarios</h2>
+      </div>
+      
+      <div class="scenario-content">
+        <!-- Witness Scenarios -->
+        <div id="witness-scenarios">
+          <div class="scenario-card" data-scenario="custody">
+            <div class="title">👨‍👩‍👧 Custody Exchange</div>
+            <div class="desc">You're about to meet your ex to exchange the kids. Past interactions have been tense and you want protection against false accusations.</div>
+          </div>
+          <div class="scenario-card" data-scenario="workplace">
+            <div class="title">💼 Workplace Meeting</div>
+            <div class="desc">You have a 1-on-1 meeting scheduled with a colleague who has been difficult. You want a record in case of later complaints.</div>
+          </div>
+          <div class="scenario-card" data-scenario="traffic">
+            <div class="title">🚗 Traffic Stop</div>
+            <div class="desc">You've been pulled over. You want to document the interaction for your protection.</div>
+          </div>
+          <div class="scenario-card" data-scenario="party">
+            <div class="title">🎉 Social Event</div>
+            <div class="desc">You're at a party where things are getting rowdy. You want a record in case something goes wrong.</div>
+          </div>
+        </div>
+        
+        <!-- Conscience Scenarios -->
+        <div id="conscience-scenarios" style="display: none;">
+          <div class="scenario-card" data-scenario="anger">
+            <div class="title">😤 About to Say Something Mean</div>
+            <div class="desc">You're in a heated argument and about to say something hurtful. Your value: Kindness.</div>
+          </div>
+          <div class="scenario-card" data-scenario="cheating">
+            <div class="title">📝 Tempted to Cheat</div>
+            <div class="desc">You're taking a test and can see your neighbor's answers. Your value: Honesty.</div>
+          </div>
+          <div class="scenario-card" data-scenario="peer">
+            <div class="title">🍺 Peer Pressure</div>
+            <div class="desc">Friends are pressuring you to drink at a party. Your values: Health, Self-respect.</div>
+          </div>
+          <div class="scenario-card" data-scenario="bystander">
+            <div class="title">👊 Witnessing Bullying</div>
+            <div class="desc">You see someone being picked on. Your values: Courage, Kindness.</div>
+          </div>
+        </div>
+        
+        <!-- Drill Scenarios -->
+        <div id="drill-scenarios" style="display: none;">
+          <div class="scenario-card" data-scenario="stranger">
+            <div class="title">🚨 Stranger Danger (Child)</div>
+            <div class="desc">Practice: An adult you don't know offers you candy and a ride home.</div>
+          </div>
+          <div class="scenario-card" data-scenario="pressure-drink">
+            <div class="title">🥤 Drink Offered (Teen)</div>
+            <div class="desc">Practice: Someone at a party hands you a drink you didn't see poured.</div>
+          </div>
+          <div class="scenario-card" data-scenario="boundary">
+            <div class="title">🤚 Setting Boundaries (Teen)</div>
+            <div class="desc">Practice: Someone is touching you in a way that makes you uncomfortable.</div>
+          </div>
+          <div class="scenario-card" data-scenario="ethics">
+            <div class="title">⚖️ Ethical Dilemma (Adult)</div>
+            <div class="desc">Practice: Your boss asks you to do something that feels wrong.</div>
+          </div>
+        </div>
+        
+        <!-- Social Coach Scenarios -->
+        <div id="social-scenarios" style="display: none;">
+          <div class="scenario-card" data-scenario="conversation">
+            <div class="title">💬 Starting a Conversation</div>
+            <div class="desc">You want to talk to someone new but don't know what to say.</div>
+          </div>
+          <div class="scenario-card" data-scenario="emotions">
+            <div class="title">😢 Reading Emotions</div>
+            <div class="desc">You're not sure how the other person is feeling right now.</div>
+          </div>
+          <div class="scenario-card" data-scenario="turn-taking">
+            <div class="title">🔄 Conversation Flow</div>
+            <div class="desc">You're not sure when to talk and when to listen.</div>
+          </div>
+          <div class="scenario-card" data-scenario="goodbye">
+            <div class="title">👋 Ending Gracefully</div>
+            <div class="desc">The conversation has gone on a while and you want to leave politely.</div>
+          </div>
+        </div>
+        
+        <!-- Simulation Area -->
+        <div class="simulation-area" id="simulation-area">
+          <div class="sim-scene" id="sim-scene">
+            <div class="scene-icon">👁️</div>
+            <div class="scene-text">Select a scenario to begin the simulation</div>
+          </div>
+          
+          <div class="digi-response" id="digi-response" style="display: none;">
+            <div class="avatar">🛡️</div>
+            <div class="message">
+              <div class="type" id="response-type">Digigami</div>
+              <p id="response-text">Message will appear here</p>
+            </div>
+          </div>
+          
+          <div class="action-buttons" id="action-buttons">
+            <!-- Buttons populated dynamically -->
+          </div>
+          
+          <!-- Drill Options (for drill mode) -->
+          <div class="drill-options" id="drill-options" style="display: none;">
+            <!-- Options populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Info Panel -->
+    <div class="info-panel">
+      <!-- Status Card -->
+      <div class="info-card">
+        <h3>System Status</h3>
+        <div class="status-row">
+          <span class="label">Mode</span>
+          <span class="value active" id="status-mode">Witness</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Recording</span>
+          <span class="value" id="status-recording">Standby</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Cloud Sync</span>
+          <span class="value active">Connected</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Evidence Vault</span>
+          <span class="value">3 recordings</span>
+        </div>
+      </div>
+      
+      <!-- Biometrics Card -->
+      <div class="info-card" id="biometrics-card">
+        <h3>Live Biometrics</h3>
+        <div class="biometrics">
+          <div class="bio-item">
+            <div class="value" id="bio-hr">72</div>
+            <div class="label">Heart Rate</div>
+          </div>
+          <div class="bio-item">
+            <div class="value" id="bio-hrv">45</div>
+            <div class="label">HRV (ms)</div>
+          </div>
+          <div class="bio-item">
+            <div class="value" id="bio-stress">Low</div>
+            <div class="label">Stress Level</div>
+          </div>
+          <div class="bio-item">
+            <div class="value" id="bio-coherence">78%</div>
+            <div class="label">Coherence</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Values Card (Conscience Mode) -->
+      <div class="info-card" id="values-card" style="display: none;">
+        <h3>Active Values</h3>
+        <div class="values-list">
+          <div class="value-item active"><span class="check">✓</span> Honesty</div>
+          <div class="value-item active"><span class="check">✓</span> Kindness</div>
+          <div class="value-item"><span class="check">✓</span> Courage</div>
+          <div class="value-item"><span class="check">✓</span> Respect</div>
+          <div class="value-item"><span class="check">✓</span> Responsibility</div>
+        </div>
+      </div>
+      
+      <!-- Evidence Card (Witness Mode) -->
+      <div class="info-card" id="evidence-card">
+        <h3>Evidence Package</h3>
+        <div class="evidence-item">
+          <span class="icon">🎤</span>
+          <span>Audio</span>
+          <span class="captured" id="ev-audio">Ready</span>
+        </div>
+        <div class="evidence-item">
+          <span class="icon">📍</span>
+          <span>Location</span>
+          <span class="captured" id="ev-location">Ready</span>
+        </div>
+        <div class="evidence-item">
+          <span class="icon">💓</span>
+          <span>Biometrics</span>
+          <span class="captured" id="ev-bio">Ready</span>
+        </div>
+        <div class="evidence-item">
+          <span class="icon">⏱️</span>
+          <span>Timestamp</span>
+          <span class="captured" id="ev-time">Ready</span>
+        </div>
+        <div class="evidence-item">
+          <span class="icon">🔗</span>
+          <span>Hedera Hash</span>
+          <span class="pending" id="ev-hedera">Pending</span>
+        </div>
+      </div>
+      
+      <!-- Timeline Card -->
+      <div class="info-card" id="timeline-card">
+        <h3>Event Timeline</h3>
+        <div class="timeline" id="timeline">
+          <div class="timeline-item">
+            <span class="time">--:--</span>
+            <span class="event">Waiting for scenario...</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Drill Progress (Drill Mode) -->
+      <div class="info-card" id="drill-card" style="display: none;">
+        <h3>Drill Progress</h3>
+        <div class="drill-progress">
+          <div class="fill" id="drill-fill"></div>
+        </div>
+        <div class="status-row">
+          <span class="label">Scenario</span>
+          <span class="value" id="drill-scenario">1 of 3</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Correct</span>
+          <span class="value" style="color: var(--green);" id="drill-correct">0</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Streak</span>
+          <span class="value" id="drill-streak">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let state = {
+      mode: 'witness',
+      recording: false,
+      scenario: null,
+      step: 0,
+      drillCorrect: 0,
+      drillStreak: 0,
+      timeline: [],
+    };
+    
+    // Scenario data
+    const scenarios = {
+      // Witness scenarios
+      custody: {
+        title: 'Custody Exchange',
+        icon: '👨‍👩‍👧',
+        steps: [
+          {
+            scene: { icon: '🚗', text: 'You arrive at the agreed meeting spot. Your ex is already there waiting.' },
+            digi: { type: 'Witness Ready', text: "I'm here with you. Recording is active. Your biometrics show you're calm - that's good evidence." },
+            actions: ['approach', 'wait'],
+          },
+          {
+            scene: { icon: '👥', text: 'Your ex starts raising their voice, accusing you of being late.' },
+            digi: { type: 'Witness Active', text: "I'm capturing this interaction. Your heart rate is stable at 78 BPM - this shows you're not escalating. The timestamp shows you arrived on time." },
+            actions: ['respond-calmly', 'stay-silent'],
+          },
+          {
+            scene: { icon: '✅', text: 'The exchange completes. Kids are safely transferred.' },
+            digi: { type: 'Witness Summary', text: "Recording complete. I captured 4 minutes of audio, continuous biometrics showing you remained calm, GPS confirming location, and Hedera timestamp. This evidence is now in your vault." },
+            actions: ['save', 'review'],
+          },
+        ],
+      },
+      // Conscience scenarios
+      anger: {
+        title: 'About to Say Something Mean',
+        icon: '😤',
+        steps: [
+          {
+            scene: { icon: '😤', text: 'Your sibling just broke your favorite thing. You can feel the anger building and harsh words forming.' },
+            digi: { type: 'Conscience Nudge', text: 'Pause. I can feel your heart racing. Before you speak - is what you\'re about to say kind? Will you regret it?' },
+            actions: ['pause', 'speak-anyway'],
+          },
+          {
+            scene: { icon: '😮‍💨', text: 'You take a breath. The words you were going to say would have been hurtful.' },
+            digi: { type: 'Conscience Guide', text: "Good. You chose your value of Kindness over your anger. Try: 'I'm really upset right now. I need a minute before we talk about this.'" },
+            actions: ['use-script', 'own-words'],
+          },
+          {
+            scene: { icon: '🤝', text: 'You expressed your feelings without attacking. The conversation stayed productive.' },
+            digi: { type: 'Conscience Reflection', text: 'You lived your value of Kindness even when it was hard. That takes real strength. I\'m proud of you.' },
+            actions: ['done'],
+          },
+        ],
+      },
+      // Drill scenarios
+      stranger: {
+        title: 'Stranger Danger Drill',
+        icon: '🚨',
+        steps: [
+          {
+            scene: { icon: '🚗', text: 'DRILL: A car pulls up next to you. The adult inside says: "Hey kid, want some candy? I can give you a ride home."' },
+            options: [
+              { text: 'Say "Sure!" and get in the car', correct: false },
+              { text: 'Say "No thank you" and walk away quickly', correct: true },
+              { text: 'Take the candy but don\'t get in', correct: false },
+              { text: 'Ignore them and keep walking to a safe adult', correct: true },
+            ],
+            feedback: {
+              correct: "Perfect! You never get in a stranger's car, no matter what they offer. Walking to a safe adult is the right choice.",
+              incorrect: "Remember: Never accept anything from strangers or get in their car. The safe choice is to say no and find a trusted adult.",
+            },
+          },
+        ],
+      },
+      // Social coach scenarios
+      conversation: {
+        title: 'Starting a Conversation',
+        icon: '💬',
+        steps: [
+          {
+            scene: { icon: '👤', text: 'You see someone at the lunch table who seems nice. You want to talk to them but feel nervous.' },
+            digi: { type: 'Social Coach', text: "I notice you want to connect. Start simple: Comment on something you both can see, or ask about something they have. 'Hey, is that book good?' works great." },
+            actions: ['try-opener', 'different-tip'],
+          },
+          {
+            scene: { icon: '💬', text: 'They look up and smile. They said "Yeah, it\'s really good! Do you like mystery books?"' },
+            digi: { type: 'Social Coach', text: "They asked you a question - that's a great sign! Answer honestly, then ask them something back. Keep the ball going back and forth." },
+            actions: ['answer-question', 'coach-me'],
+          },
+          {
+            scene: { icon: '😊', text: 'You\'re having a real conversation! They seem engaged and interested.' },
+            digi: { type: 'Social Coach', text: 'You\'re doing great! Notice their body language - they\'re leaning in and making eye contact. That means they\'re enjoying talking to you.' },
+            actions: ['continue', 'end-gracefully'],
+          },
+        ],
+      },
+    };
+    
+    // DOM Elements
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    const panelIcon = document.getElementById('panel-icon');
+    const panelTitle = document.getElementById('panel-title');
+    const recordingBanner = document.getElementById('recording-banner');
+    const simulationArea = document.getElementById('simulation-area');
+    const simScene = document.getElementById('sim-scene');
+    const digiResponse = document.getElementById('digi-response');
+    const responseType = document.getElementById('response-type');
+    const responseText = document.getElementById('response-text');
+    const actionButtons = document.getElementById('action-buttons');
+    const drillOptions = document.getElementById('drill-options');
+    const timeline = document.getElementById('timeline');
+    
+    // Mode switching
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.mode = btn.dataset.mode;
+        updateMode();
+      });
+    });
+    
+    function updateMode() {
+      // Hide all scenario lists
+      document.querySelectorAll('[id$="-scenarios"]').forEach(el => el.style.display = 'none');
+      document.getElementById(`${state.mode}-scenarios`).style.display = 'block';
+      
+      // Update panel header
+      const modeConfig = {
+        witness: { icon: '👁️', title: 'Witness Mode Scenarios' },
+        conscience: { icon: '💭', title: 'Conscience Mode Scenarios' },
+        drill: { icon: '🎯', title: 'Private Drill Scenarios' },
+        social: { icon: '🤝', title: 'Social Coach Scenarios' },
+      };
+      
+      panelIcon.textContent = modeConfig[state.mode].icon;
+      panelTitle.textContent = modeConfig[state.mode].title;
+      document.getElementById('status-mode').textContent = state.mode.charAt(0).toUpperCase() + state.mode.slice(1);
+      
+      // Show/hide appropriate cards
+      document.getElementById('values-card').style.display = state.mode === 'conscience' ? 'block' : 'none';
+      document.getElementById('evidence-card').style.display = state.mode === 'witness' ? 'block' : 'none';
+      document.getElementById('drill-card').style.display = state.mode === 'drill' ? 'block' : 'none';
+      
+      // Reset simulation
+      resetSimulation();
+    }
+    
+    // Scenario selection
+    document.querySelectorAll('.scenario-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        startScenario(card.dataset.scenario);
+      });
+    });
+    
+    function startScenario(scenarioId) {
+      state.scenario = scenarioId;
+      state.step = 0;
+      state.timeline = [];
+      
+      // Hide scenario list, show simulation
+      document.querySelectorAll('[id$="-scenarios"]').forEach(el => el.style.display = 'none');
+      simulationArea.classList.add('active');
+      
+      // Start recording for witness mode
+      if (state.mode === 'witness') {
+        startRecording();
+      }
+      
+      // Show first step
+      showStep();
+    }
+    
+    function showStep() {
+      const scenario = scenarios[state.scenario];
+      if (!scenario) return;
+      
+      const step = scenario.steps[state.step];
+      if (!step) {
+        endScenario();
+        return;
+      }
+      
+      // Update scene
+      simScene.querySelector('.scene-icon').textContent = step.scene.icon;
+      simScene.querySelector('.scene-text').textContent = step.scene.text;
+      
+      // Update Digi response
+      if (step.digi) {
+        digiResponse.style.display = 'flex';
+        responseType.textContent = step.digi.type;
+        responseText.textContent = step.digi.text;
+      }
+      
+      // Update actions (for non-drill modes)
+      if (step.actions) {
+        drillOptions.style.display = 'none';
+        actionButtons.style.display = 'flex';
+        actionButtons.innerHTML = step.actions.map(action => 
+          `<button class="action-btn ${action === 'done' ? 'primary' : ''}" onclick="handleAction('${action}')">${formatAction(action)}</button>`
+        ).join('');
+        actionButtons.innerHTML += `<button class="action-btn" onclick="resetSimulation()">Back to Scenarios</button>`;
+      }
+      
+      // Update drill options (for drill mode)
+      if (step.options) {
+        actionButtons.style.display = 'none';
+        drillOptions.style.display = 'flex';
+        drillOptions.innerHTML = step.options.map((opt, i) => 
+          `<div class="drill-option" onclick="handleDrillAnswer(${i}, ${opt.correct})">${opt.text}</div>`
+        ).join('');
+      }
+      
+      // Add to timeline
+      addTimelineEvent(step.scene.text.substring(0, 40) + '...');
+    }
+    
+    function formatAction(action) {
+      const labels = {
+        'approach': '👟 Approach calmly',
+        'wait': '⏸️ Wait for them',
+        'respond-calmly': '🗣️ Respond calmly',
+        'stay-silent': '🤫 Stay silent',
+        'save': '💾 Save to vault',
+        'review': '👀 Review recording',
+        'pause': '⏸️ Pause and breathe',
+        'speak-anyway': '😤 Speak anyway',
+        'use-script': '📝 Use suggested words',
+        'own-words': '💬 Use my own words',
+        'try-opener': '👋 Try the opener',
+        'different-tip': '💡 Different suggestion',
+        'answer-question': '💬 Answer them',
+        'coach-me': '🎯 Coach me more',
+        'continue': '➡️ Continue chatting',
+        'end-gracefully': '👋 End gracefully',
+        'done': '✅ Complete',
+      };
+      return labels[action] || action;
+    }
+    
+    function handleAction(action) {
+      // Advance to next step
+      state.step++;
+      showStep();
+    }
+    
+    function handleDrillAnswer(index, correct) {
+      const options = document.querySelectorAll('.drill-option');
+      options.forEach((opt, i) => {
+        opt.classList.add(scenarios[state.scenario].steps[state.step].options[i].correct ? 'correct' : 'incorrect');
+        opt.style.pointerEvents = 'none';
+      });
+      
+      if (correct) {
+        state.drillCorrect++;
+        state.drillStreak++;
+      } else {
+        state.drillStreak = 0;
+      }
+      
+      document.getElementById('drill-correct').textContent = state.drillCorrect;
+      document.getElementById('drill-streak').textContent = state.drillStreak;
+      
+      // Show feedback
+      const step = scenarios[state.scenario].steps[state.step];
+      digiResponse.style.display = 'flex';
+      responseType.textContent = correct ? '✓ Correct!' : '✗ Not quite';
+      responseText.textContent = correct ? step.feedback.correct : step.feedback.incorrect;
+      
+      // Add continue button
+      setTimeout(() => {
+        drillOptions.innerHTML += `<button class="action-btn primary" onclick="nextDrillStep()" style="margin-top: 1rem;">Continue →</button>`;
+      }, 1000);
+    }
+    
+    function nextDrillStep() {
+      state.step++;
+      if (state.step >= scenarios[state.scenario].steps.length) {
+        endScenario();
+      } else {
+        showStep();
+      }
+    }
+    
+    function endScenario() {
+      if (state.mode === 'witness') {
+        stopRecording();
+      }
+      
+      simScene.querySelector('.scene-icon').textContent = '✅';
+      simScene.querySelector('.scene-text').textContent = 'Scenario complete!';
+      digiResponse.style.display = 'none';
+      actionButtons.innerHTML = `<button class="action-btn primary" onclick="resetSimulation()">Back to Scenarios</button>`;
+      drillOptions.style.display = 'none';
+    }
+    
+    function resetSimulation() {
+      state.scenario = null;
+      state.step = 0;
+      stopRecording();
+      
+      simulationArea.classList.remove('active');
+      document.querySelectorAll('[id$="-scenarios"]').forEach(el => el.style.display = 'none');
+      document.getElementById(`${state.mode}-scenarios`).style.display = 'block';
+      document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+      
+      // Reset timeline
+      timeline.innerHTML = `<div class="timeline-item"><span class="time">--:--</span><span class="event">Waiting for scenario...</span></div>`;
+    }
+    
+    function startRecording() {
+      state.recording = true;
+      recordingBanner.classList.add('active');
+      document.getElementById('status-recording').textContent = '🔴 Active';
+      document.getElementById('status-recording').classList.add('recording');
+      
+      // Update evidence status
+      document.getElementById('ev-audio').textContent = 'Capturing...';
+      document.getElementById('ev-audio').className = 'pending';
+      document.getElementById('ev-location').textContent = 'Captured';
+      document.getElementById('ev-location').className = 'captured';
+      document.getElementById('ev-bio').textContent = 'Streaming';
+      document.getElementById('ev-bio').className = 'pending';
+      document.getElementById('ev-time').textContent = 'Anchored';
+      document.getElementById('ev-time').className = 'captured';
+      
+      // Simulate Hedera anchor after delay
+      setTimeout(() => {
+        document.getElementById('ev-hedera').textContent = '0x7a3f...';
+        document.getElementById('ev-hedera').className = 'captured';
+      }, 2000);
+      
+      // Simulate biometric changes
+      simulateBiometrics();
+    }
+    
+    function stopRecording() {
+      state.recording = false;
+      recordingBanner.classList.remove('active');
+      document.getElementById('status-recording').textContent = 'Standby';
+      document.getElementById('status-recording').classList.remove('recording');
+      
+      // Update evidence status
+      document.getElementById('ev-audio').textContent = 'Ready';
+      document.getElementById('ev-audio').className = 'captured';
+      document.getElementById('ev-bio').textContent = 'Ready';
+      document.getElementById('ev-bio').className = 'captured';
+    }
+    
+    function simulateBiometrics() {
+      if (!state.recording) return;
+      
+      // Random fluctuations
+      document.getElementById('bio-hr').textContent = 70 + Math.floor(Math.random() * 15);
+      document.getElementById('bio-hrv').textContent = 40 + Math.floor(Math.random() * 20);
+      document.getElementById('bio-coherence').textContent = (70 + Math.floor(Math.random() * 20)) + '%';
+      
+      setTimeout(simulateBiometrics, 2000);
+    }
+    
+    function addTimelineEvent(event) {
+      const now = new Date();
+      const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
+      state.timeline.push({ time, event });
+      
+      timeline.innerHTML = state.timeline.slice(-5).map(t => 
+        `<div class="timeline-item"><span class="time">${t.time}</span><span class="event">${t.event}</span></div>`
+      ).join('');
+    }
+    
+    // Initialize
+    updateMode();
+  </script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DIGIGAMI Icon Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      padding: 40px;
+      text-align: center;
+    }
+    h1 { color: #818cf8; }
+    .icon-preview {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin: 40px 0;
+      flex-wrap: wrap;
+    }
+    .icon-item {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .icon-item canvas {
+      display: block;
+      margin: 0 auto 12px;
+      border-radius: 8px;
+    }
+    .icon-item span {
+      font-size: 14px;
+      color: #888;
+    }
+    button {
+      background: #6366f1;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 8px;
+    }
+    button:hover { background: #4f46e5; }
+  </style>
+</head>
+<body>
+  <h1>DIGIGAMI Icon Generator</h1>
+  <p>Generate PNG icons from the SVG source</p>
+
+  <div class="icon-preview" id="preview"></div>
+
+  <div>
+    <button onclick="downloadAll()">Download All Icons</button>
+  </div>
+
+  <script>
+    const sizes = [16, 32, 48, 128];
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a1a2e"/>
+          <stop offset="100%" style="stop-color:#0f0f19"/>
+        </linearGradient>
+        <linearGradient id="core" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#6366f1"/>
+          <stop offset="100%" style="stop-color:#4f46e5"/>
+        </linearGradient>
+      </defs>
+      <rect width="128" height="128" rx="24" fill="url(#bg)"/>
+      <circle cx="64" cy="64" r="42" fill="none" stroke="#818cf8" stroke-width="3" opacity="0.6"/>
+      <circle cx="64" cy="64" r="32" fill="url(#core)"/>
+      <circle cx="64" cy="64" r="18" fill="#818cf8" opacity="0.4"/>
+      <circle cx="64" cy="64" r="8" fill="#ffffff"/>
+    </svg>`;
+
+    const canvases = {};
+
+    function init() {
+      const preview = document.getElementById('preview');
+
+      sizes.forEach(size => {
+        const div = document.createElement('div');
+        div.className = 'icon-item';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        canvases[size] = canvas;
+
+        const label = document.createElement('span');
+        label.textContent = `${size}x${size}`;
+
+        div.appendChild(canvas);
+        div.appendChild(label);
+        preview.appendChild(div);
+
+        renderIcon(canvas, size);
+      });
+    }
+
+    function renderIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+
+    function downloadAll() {
+      sizes.forEach(size => {
+        const canvas = canvases[size];
+        const link = document.createElement('a');
+        link.download = `digigami-${size}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

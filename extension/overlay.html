@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Guardian - Content Blocked</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f19 0%, #1a1a2e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 520px;
+      padding: 48px;
+      text-align: center;
+    }
+
+    .avatar {
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 36px;
+    }
+
+    .avatar svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .avatar-ring {
+      fill: none;
+      stroke: #6366f1;
+      stroke-width: 2;
+      opacity: 0.6;
+      animation: ring-pulse 3s ease-in-out infinite;
+    }
+
+    .avatar-core {
+      fill: #4f46e5;
+      opacity: 0.8;
+    }
+
+    @keyframes ring-pulse {
+      0%, 100% { transform-origin: center; transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      line-height: 1.6;
+      color: #a0a0a0;
+      margin-bottom: 32px;
+    }
+
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: rgba(99, 102, 241, 0.15);
+      border-radius: 24px;
+      margin-bottom: 40px;
+    }
+
+    .category-label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .category-value {
+      font-size: 15px;
+      font-weight: 500;
+      color: #818cf8;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 40px;
+    }
+
+    .btn {
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #a0a0a0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .coherence-section {
+      margin-bottom: 32px;
+    }
+
+    .coherence-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .coherence-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .coherence-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #22c55e 100%);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .footer {
+      font-size: 14px;
+      color: #555;
+      font-style: italic;
+    }
+
+    /* Bypass request form */
+    .bypass-form {
+      display: none;
+      margin-top: 24px;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+    }
+
+    .bypass-form.visible {
+      display: block;
+    }
+
+    .bypass-form h3 {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: #c0c0c0;
+    }
+
+    .bypass-form textarea {
+      width: 100%;
+      height: 100px;
+      padding: 14px;
+      font-size: 14px;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #e0e0e0;
+      resize: none;
+      margin-bottom: 16px;
+    }
+
+    .bypass-form textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .bypass-form textarea::placeholder {
+      color: #666;
+    }
+
+    .bypass-options {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .bypass-option {
+      flex: 1;
+      padding: 12px;
+      font-size: 13px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #a0a0a0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .bypass-option:hover,
+    .bypass-option.selected {
+      border-color: #6366f1;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .bypass-submit {
+      width: 100%;
+    }
+
+    /* Status message */
+    .status-message {
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status-message.success {
+      display: block;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #4ade80;
+    }
+
+    .status-message.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .status-message.denied {
+      display: block;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="avatar">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" class="avatar-ring"/>
+        <circle cx="50" cy="50" r="35" class="avatar-core"/>
+      </svg>
+    </div>
+
+    <h1>Pause & Reflect</h1>
+
+    <p class="subtitle" id="reason">
+      This content has been flagged based on your consent preferences.
+    </p>
+
+    <div class="category-badge">
+      <span class="category-label">Category:</span>
+      <span class="category-value" id="category">Restricted</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="reflectBtn">
+        I'll reflect on this
+      </button>
+      <button class="btn btn-secondary" id="requestAccessBtn">
+        Request access
+      </button>
+    </div>
+
+    <div class="bypass-form" id="bypassForm">
+      <h3>Why do you need access?</h3>
+
+      <div class="bypass-options">
+        <button class="bypass-option" data-duration="5">5 min</button>
+        <button class="bypass-option" data-duration="30">30 min</button>
+        <button class="bypass-option" data-duration="60">1 hour</button>
+      </div>
+
+      <textarea
+        id="bypassReason"
+        placeholder="Optional: Explain why you need to access this content..."
+      ></textarea>
+
+      <button class="btn btn-primary bypass-submit" id="submitBypass">
+        Submit Request
+      </button>
+
+      <div class="status-message" id="bypassStatus"></div>
+    </div>
+
+    <div class="coherence-section">
+      <span class="coherence-label">Current coherence level</span>
+      <div class="coherence-bar">
+        <div class="coherence-fill" id="coherenceBar" style="width: 50%"></div>
+      </div>
+    </div>
+
+    <p class="footer">
+      DIGIGAMI supports your intentions, not controls them.
+    </p>
+  </div>
+
+  <script>
+    // Get URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const blockedUrl = params.get('url');
+    const reason = params.get('reason');
+    const category = params.get('category');
+    const coherence = parseFloat(params.get('coherence')) || 0.5;
+
+    // Update UI with parameters
+    if (reason) {
+      document.getElementById('reason').textContent = decodeURIComponent(reason);
+    }
+    if (category) {
+      document.getElementById('category').textContent = decodeURIComponent(category);
+    }
+    document.getElementById('coherenceBar').style.width = `${coherence * 100}%`;
+
+    // Reflect button - go back
+    document.getElementById('reflectBtn').addEventListener('click', () => {
+      chrome.runtime.sendMessage({
+        type: 'USER_REFLECTED',
+        url: blockedUrl
+      });
+
+      if (document.referrer && !document.referrer.includes('overlay.html')) {
+        window.location.href = document.referrer;
+      } else {
+        window.history.back();
+      }
+    });
+
+    // Request access button
+    document.getElementById('requestAccessBtn').addEventListener('click', () => {
+      document.getElementById('bypassForm').classList.toggle('visible');
+    });
+
+    // Bypass duration options
+    let selectedDuration = null;
+    document.querySelectorAll('.bypass-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.bypass-option').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedDuration = parseInt(btn.dataset.duration);
+      });
+    });
+
+    // Submit bypass request
+    document.getElementById('submitBypass').addEventListener('click', () => {
+      const reason = document.getElementById('bypassReason').value;
+      const statusEl = document.getElementById('bypassStatus');
+
+      chrome.runtime.sendMessage({
+        type: 'BYPASS_REQUEST',
+        url: blockedUrl,
+        reason: reason,
+        duration: selectedDuration || 5
+      }, (response) => {
+        if (response?.granted) {
+          statusEl.className = 'status-message success';
+          statusEl.textContent = 'Access granted. Redirecting...';
+          setTimeout(() => {
+            window.location.href = blockedUrl;
+          }, 1000);
+        } else {
+          statusEl.className = 'status-message denied';
+          statusEl.textContent = response?.reason || 'Access not granted at this time.';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

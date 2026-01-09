@@ -1,0 +1,86 @@
+{
+  "manifest_version": 3,
+  "name": "DIGIGAMI Guardian",
+  "version": "1.0.0",
+  "description": "Your digital twin companion - consent-aware browsing protection",
+  
+  "permissions": [
+    "storage",
+    "webRequest",
+    "webNavigation",
+    "notifications",
+    "alarms",
+    "identity"
+  ],
+  
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["digigami-overlay.css"],
+      "run_at": "document_start"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/digigami-16.png",
+      "32": "icons/digigami-32.png",
+      "48": "icons/digigami-48.png",
+      "128": "icons/digigami-128.png"
+    }
+  },
+  
+  "icons": {
+    "16": "icons/digigami-16.png",
+    "32": "icons/digigami-32.png",
+    "48": "icons/digigami-48.png",
+    "128": "icons/digigami-128.png"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "overlay.html",
+        "block.html",
+        "panic.html",
+        "digigami-avatar.svg",
+        "digigami-overlay.css",
+        "sounds/*",
+        "icons/*",
+        "core/*",
+        "modes/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  
+  "options_page": "options.html",
+  
+  "commands": {
+    "toggle-digigami": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+D",
+        "mac": "Command+Shift+D"
+      },
+      "description": "Toggle Digigami visibility"
+    },
+    "panic-button": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Emergency consent freeze"
+    }
+  }
+}

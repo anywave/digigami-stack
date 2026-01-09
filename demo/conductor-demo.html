@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Conductor Mode Demo</title>
+  <style>
+    :root {
+      --pink: #d16ba5;
+      --coral: #f28d7d;
+      --orange: #f0856a;
+      --yellow: #f3e06e;
+      --green: #5bd6a2;
+      --cyan: #5ed5d5;
+      --blue: #5da5d5;
+      --purple: #9b6dd6;
+      --dark: #0a0a0f;
+      --dark-card: #12121a;
+      --grid: #1a1a2f;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--dark);
+      color: white;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* Main Layout */
+    .presenter-view {
+      display: grid;
+      grid-template-columns: 280px 1fr 320px;
+      height: 100vh;
+      gap: 1px;
+      background: var(--grid);
+    }
+    
+    /* Conductor Panel */
+    .conductor-panel {
+      background: var(--dark-card);
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+    }
+    
+    .conductor-header {
+      text-align: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--grid);
+      margin-bottom: 1rem;
+    }
+    
+    .conductor-header h2 {
+      font-size: 1rem;
+      color: var(--cyan);
+      margin-bottom: 0.25rem;
+    }
+    
+    .conductor-header .mode {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    
+    /* Avatar Container */
+    .avatar-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    .avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      position: relative;
+      animation: breathe 4s ease-in-out infinite;
+      box-shadow: 0 0 40px rgba(94, 213, 213, 0.3);
+    }
+    
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(94, 213, 213, 0.3); }
+      50% { transform: scale(1.05); box-shadow: 0 0 60px rgba(94, 213, 213, 0.5); }
+    }
+    
+    .gesture-display {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+    
+    .gesture-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+      animation: gesture-pulse 1s ease-in-out infinite;
+    }
+    
+    @keyframes gesture-pulse {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    
+    .gesture-text {
+      font-size: 1rem;
+      color: var(--yellow);
+      font-weight: 600;
+    }
+    
+    .gesture-subtext {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.25rem;
+    }
+    
+    /* Slide Area */
+    .slide-area {
+      background: var(--dark);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .slide-header {
+      padding: 0.75rem 1rem;
+      background: var(--dark-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .slide-nav {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .slide-nav button {
+      padding: 0.5rem 1rem;
+      background: var(--grid);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .slide-nav button:hover { background: var(--cyan); color: var(--dark); }
+    
+    .slide-counter {
+      font-size: 0.9rem;
+      color: #888;
+    }
+    
+    .current-slide {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    
+    .slide-content {
+      background: white;
+      color: #333;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 800px;
+      aspect-ratio: 16/9;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    
+    .slide-content h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: #1a1a2f;
+    }
+    
+    .slide-content p {
+      font-size: 1.2rem;
+      color: #666;
+      line-height: 1.6;
+    }
+    
+    .slide-content .stat {
+      font-size: 4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 1rem 0;
+    }
+    
+    .notes-area {
+      padding: 1rem;
+      background: var(--dark-card);
+      border-top: 1px solid var(--grid);
+    }
+    
+    .notes-label {
+      font-size: 0.75rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+    }
+    
+    .notes-content {
+      font-size: 0.9rem;
+      color: #ccc;
+      line-height: 1.5;
+    }
+    
+    .cue {
+      color: var(--yellow);
+      font-style: italic;
+    }
+    
+    /* Analytics Panel */
+    .analytics-panel {
+      background: var(--dark-card);
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    
+    .analytics-section {
+      margin-bottom: 1.5rem;
+    }
+    
+    .analytics-section h3 {
+      font-size: 0.75rem;
+      color: var(--purple);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    /* Timer */
+    .timer {
+      text-align: center;
+      padding: 1rem;
+      background: var(--grid);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    
+    .timer .time {
+      font-size: 2.5rem;
+      font-weight: 700;
+      font-family: 'SF Mono', Monaco, monospace;
+      color: var(--cyan);
+    }
+    
+    .timer .label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 0.25rem;
+    }
+    
+    .timer.warning .time { color: var(--yellow); }
+    .timer.danger .time { color: var(--coral); }
+    
+    /* Metrics */
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .metric:last-child { border-bottom: none; }
+    
+    .metric .label {
+      font-size: 0.85rem;
+      color: #888;
+    }
+    
+    .metric .value {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .metric .value.good { color: var(--green); }
+    .metric .value.warning { color: var(--yellow); }
+    .metric .value.danger { color: var(--coral); }
+    
+    /* Pace Bar */
+    .pace-bar {
+      height: 8px;
+      background: var(--grid);
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .pace-indicator {
+      position: absolute;
+      width: 4px;
+      height: 100%;
+      background: white;
+      border-radius: 2px;
+      transition: left 0.3s ease;
+    }
+    
+    .pace-zone {
+      position: absolute;
+      height: 100%;
+      opacity: 0.5;
+    }
+    
+    .pace-zone.slow { left: 0; width: 30%; background: var(--coral); }
+    .pace-zone.good { left: 30%; width: 40%; background: var(--green); }
+    .pace-zone.fast { left: 70%; width: 30%; background: var(--yellow); }
+    
+    /* Engagement */
+    .engagement-bar {
+      height: 12px;
+      background: var(--grid);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    
+    .engagement-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--green));
+      transition: width 0.5s ease;
+    }
+    
+    /* Activity Feed */
+    .activity-feed {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    
+    .activity-item {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: var(--grid);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      font-size: 0.8rem;
+    }
+    
+    .activity-item .time {
+      color: var(--cyan);
+      font-family: monospace;
+      min-width: 45px;
+    }
+    
+    .activity-item .event { color: #ccc; }
+    
+    /* Biometrics */
+    .bio-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .bio-item {
+      background: var(--grid);
+      border-radius: 6px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    
+    .bio-item .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    
+    .bio-item .label {
+      font-size: 0.7rem;
+      color: #888;
+      margin-top: 0.25rem;
+    }
+    
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--grid);
+    }
+    
+    .control-btn {
+      flex: 1;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    
+    .control-btn.primary {
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      color: white;
+    }
+    
+    .control-btn.secondary {
+      background: var(--grid);
+      color: white;
+    }
+    
+    .control-btn:hover { transform: translateY(-2px); }
+    
+    /* Simulation Controls */
+    .sim-controls {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      z-index: 100;
+    }
+    
+    .sim-controls label {
+      font-size: 0.85rem;
+      color: #888;
+    }
+    
+    .sim-controls select {
+      padding: 0.5rem;
+      background: var(--grid);
+      border: 1px solid var(--cyan);
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+    
+    .sim-btn {
+      padding: 0.5rem 1rem;
+      background: var(--cyan);
+      border: none;
+      border-radius: 6px;
+      color: var(--dark);
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="presenter-view">
+    <!-- Conductor Panel -->
+    <div class="conductor-panel">
+      <div class="conductor-header">
+        <h2>🎭 CONDUCTOR</h2>
+        <div class="mode">Presentation Mode Active</div>
+      </div>
+      
+      <div class="avatar-container">
+        <div class="avatar" id="avatar">🎼</div>
+        
+        <div class="gesture-display">
+          <div class="gesture-icon" id="gesture-icon">✋</div>
+          <div class="gesture-text" id="gesture-text">Good pace</div>
+          <div class="gesture-subtext" id="gesture-subtext">Maintain current tempo</div>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <button class="control-btn secondary" onclick="togglePause()">⏸️ Pause</button>
+        <button class="control-btn primary" onclick="nextSlide()">Next →</button>
+      </div>
+    </div>
+    
+    <!-- Slide Area -->
+    <div class="slide-area">
+      <div class="slide-header">
+        <div class="slide-nav">
+          <button onclick="prevSlide()">← Prev</button>
+          <button onclick="nextSlide()">Next →</button>
+        </div>
+        <div class="slide-counter" id="slide-counter">Slide 1 of 5</div>
+      </div>
+      
+      <div class="current-slide">
+        <div class="slide-content" id="slide-content">
+          <h1>Q4 Strategy Review</h1>
+          <p>Building momentum for 2026</p>
+        </div>
+      </div>
+      
+      <div class="notes-area">
+        <div class="notes-label">Speaker Notes</div>
+        <div class="notes-content" id="notes-content">
+          Welcome everyone. <span class="cue">CUE: Start strong, make eye contact with camera.</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Analytics Panel -->
+    <div class="analytics-panel">
+      <div class="timer" id="timer">
+        <div class="time" id="timer-display">05:00</div>
+        <div class="label">Time Remaining</div>
+      </div>
+      
+      <div class="analytics-section">
+        <h3>Speaking Pace</h3>
+        <div class="metric">
+          <span class="label">Words/min</span>
+          <span class="value good" id="wpm">142</span>
+        </div>
+        <div class="pace-bar">
+          <div class="pace-zone slow"></div>
+          <div class="pace-zone good"></div>
+          <div class="pace-zone fast"></div>
+          <div class="pace-indicator" id="pace-indicator" style="left: 50%;"></div>
+        </div>
+      </div>
+      
+      <div class="analytics-section">
+        <h3>Audience Engagement</h3>
+        <div class="engagement-bar">
+          <div class="engagement-fill" id="engagement-fill" style="width: 78%;"></div>
+        </div>
+        <div class="metric">
+          <span class="label">Engagement</span>
+          <span class="value good" id="engagement">78%</span>
+        </div>
+        <div class="metric">
+          <span class="label">Cameras On</span>
+          <span class="value" id="cameras">12/15</span>
+        </div>
+        <div class="metric">
+          <span class="label">Questions</span>
+          <span class="value" id="questions">2 pending</span>
+        </div>
+      </div>
+      
+      <div class="analytics-section">
+        <h3>Your Biometrics</h3>
+        <div class="bio-grid">
+          <div class="bio-item">
+            <div class="value" id="hr" style="color: var(--green);">72</div>
+            <div class="label">Heart Rate</div>
+          </div>
+          <div class="bio-item">
+            <div class="value" id="stress" style="color: var(--green);">Low</div>
+            <div class="label">Stress</div>
+          </div>
+          <div class="bio-item">
+            <div class="value" id="coherence" style="color: var(--cyan);">82%</div>
+            <div class="label">Coherence</div>
+          </div>
+          <div class="bio-item">
+            <div class="value" id="energy" style="color: var(--yellow);">Med</div>
+            <div class="label">Energy</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="analytics-section">
+        <h3>Conductor Activity</h3>
+        <div class="activity-feed" id="activity-feed">
+          <div class="activity-item">
+            <span class="time">0:00</span>
+            <span class="event">Presentation started</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Simulation Controls -->
+  <div class="sim-controls">
+    <label>Simulate:</label>
+    <select id="scenario-select">
+      <option value="normal">Normal Flow</option>
+      <option value="rushing">Speaking Too Fast</option>
+      <option value="slow">Speaking Too Slow</option>
+      <option value="monotone">Low Energy/Monotone</option>
+      <option value="nervous">Nervous/Stressed</option>
+      <option value="losing">Losing Audience</option>
+      <option value="time">Running Out of Time</option>
+    </select>
+    <button class="sim-btn" onclick="runScenario()">Run Scenario</button>
+  </div>
+
+  <script>
+    // State
+    let state = {
+      slide: 0,
+      timeRemaining: 300, // 5 minutes
+      paused: false,
+      wpm: 142,
+      engagement: 78,
+      hr: 72,
+      activities: []
+    };
+    
+    // Slides data
+    const slides = [
+      {
+        title: 'Q4 Strategy Review',
+        content: 'Building momentum for 2026',
+        notes: 'Welcome everyone. <span class="cue">CUE: Start strong, make eye contact with camera.</span>'
+      },
+      {
+        title: 'Key Achievements',
+        content: '<div class="stat">127%</div>Revenue growth year-over-year',
+        notes: 'This is the headline number. <span class="cue">CUE: Pause after revealing - let it sink in.</span>'
+      },
+      {
+        title: 'Customer Success Story',
+        content: 'Acme Corp reduced costs by 40% using our platform',
+        notes: 'Tell the Acme story here. <span class="cue">CUE: This is emotional - slow down, add warmth.</span>'
+      },
+      {
+        title: 'Challenges Ahead',
+        content: 'Market headwinds require strategic pivots',
+        notes: 'Be honest about challenges. <span class="cue">CUE: Serious tone, but confident.</span>'
+      },
+      {
+        title: 'The Ask',
+        content: '15% budget increase to capture market opportunity',
+        notes: 'This is the moment. <span class="cue">CUE: Direct eye contact. Clear, confident ask.</span>'
+      }
+    ];
+    
+    // Gesture library
+    const gestures = {
+      good: { icon: '✋', text: 'Good pace', subtext: 'Maintain current tempo' },
+      slowDown: { icon: '🖐️↓', text: 'Slow down', subtext: "You're rushing - breathe" },
+      speedUp: { icon: '🖐️↑', text: 'Pick up pace', subtext: 'Energy is dropping' },
+      pause: { icon: '⏸️', text: 'Pause here', subtext: 'Let that point land' },
+      breathe: { icon: '😮‍💨', text: 'Breathe', subtext: "You're tense - relax" },
+      energy: { icon: '💪', text: 'More energy!', subtext: 'Wake them up' },
+      smile: { icon: '😊', text: 'Add warmth', subtext: 'Smile - connect with them' },
+      warning: { icon: '⚠️', text: 'Losing them', subtext: 'Re-engage the audience' },
+      timeCheck: { icon: '⏱️', text: 'Time check', subtext: 'Wrap up this section' },
+      eyeContact: { icon: '👀', text: 'Eye contact', subtext: 'Look at the camera' },
+      keyPoint: { icon: '🎯', text: 'Key point!', subtext: 'Emphasize this moment' }
+    };
+    
+    // Update functions
+    function updateSlide() {
+      const slide = slides[state.slide];
+      document.getElementById('slide-content').innerHTML = `
+        <h1>${slide.title}</h1>
+        <p>${slide.content}</p>
+      `;
+      document.getElementById('notes-content').innerHTML = slide.notes;
+      document.getElementById('slide-counter').textContent = `Slide ${state.slide + 1} of ${slides.length}`;
+    }
+    
+    function updateGesture(gestureKey) {
+      const gesture = gestures[gestureKey];
+      document.getElementById('gesture-icon').textContent = gesture.icon;
+      document.getElementById('gesture-text').textContent = gesture.text;
+      document.getElementById('gesture-subtext').textContent = gesture.subtext;
+      
+      // Add to activity feed
+      addActivity(gesture.text);
+    }
+    
+    function updateTimer() {
+      if (state.paused) return;
+      
+      state.timeRemaining--;
+      const mins = Math.floor(state.timeRemaining / 60);
+      const secs = state.timeRemaining % 60;
+      document.getElementById('timer-display').textContent = 
+        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      
+      // Timer warnings
+      const timerEl = document.getElementById('timer');
+      if (state.timeRemaining < 60) {
+        timerEl.className = 'timer danger';
+      } else if (state.timeRemaining < 120) {
+        timerEl.className = 'timer warning';
+      } else {
+        timerEl.className = 'timer';
+      }
+      
+      if (state.timeRemaining <= 0) {
+        clearInterval(timerInterval);
+      }
+    }
+    
+    function updateMetrics() {
+      // WPM
+      const wpmEl = document.getElementById('wpm');
+      wpmEl.textContent = state.wpm;
+      wpmEl.className = state.wpm > 170 ? 'value warning' : 
+                        state.wpm < 110 ? 'value warning' : 'value good';
+      
+      // Pace indicator (0-100%)
+      const pacePercent = Math.min(100, Math.max(0, (state.wpm - 80) / 1.2));
+      document.getElementById('pace-indicator').style.left = `${pacePercent}%`;
+      
+      // Engagement
+      document.getElementById('engagement').textContent = `${state.engagement}%`;
+      document.getElementById('engagement-fill').style.width = `${state.engagement}%`;
+      document.getElementById('engagement').className = 
+        state.engagement > 70 ? 'value good' : 
+        state.engagement > 50 ? 'value warning' : 'value danger';
+      
+      // Heart rate
+      document.getElementById('hr').textContent = state.hr;
+      document.getElementById('hr').style.color = 
+        state.hr > 100 ? 'var(--coral)' : 
+        state.hr > 85 ? 'var(--yellow)' : 'var(--green)';
+    }
+    
+    function addActivity(event) {
+      const elapsed = 300 - state.timeRemaining;
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      const time = `${mins}:${secs.toString().padStart(2, '0')}`;
+      
+      state.activities.unshift({ time, event });
+      
+      const feed = document.getElementById('activity-feed');
+      feed.innerHTML = state.activities.slice(0, 10).map(a => `
+        <div class="activity-item">
+          <span class="time">${a.time}</span>
+          <span class="event">${a.event}</span>
+        </div>
+      `).join('');
+    }
+    
+    // Navigation
+    function nextSlide() {
+      if (state.slide < slides.length - 1) {
+        state.slide++;
+        updateSlide();
+        addActivity(`Advanced to slide ${state.slide + 1}`);
+      }
+    }
+    
+    function prevSlide() {
+      if (state.slide > 0) {
+        state.slide--;
+        updateSlide();
+        addActivity(`Returned to slide ${state.slide + 1}`);
+      }
+    }
+    
+    function togglePause() {
+      state.paused = !state.paused;
+      document.querySelector('.control-btn.secondary').textContent = 
+        state.paused ? '▶️ Resume' : '⏸️ Pause';
+    }
+    
+    // Scenarios
+    function runScenario() {
+      const scenario = document.getElementById('scenario-select').value;
+      
+      switch(scenario) {
+        case 'rushing':
+          state.wpm = 185;
+          state.hr = 92;
+          updateGesture('slowDown');
+          addActivity('⚠️ Rushing detected');
+          break;
+          
+        case 'slow':
+          state.wpm = 95;
+          state.engagement = 62;
+          updateGesture('speedUp');
+          addActivity('⚠️ Pace too slow');
+          break;
+          
+        case 'monotone':
+          state.engagement = 55;
+          document.getElementById('energy').textContent = 'Low';
+          document.getElementById('energy').style.color = 'var(--coral)';
+          updateGesture('energy');
+          addActivity('⚠️ Energy dropping');
+          break;
+          
+        case 'nervous':
+          state.hr = 108;
+          document.getElementById('stress').textContent = 'High';
+          document.getElementById('stress').style.color = 'var(--coral)';
+          updateGesture('breathe');
+          addActivity('⚠️ Stress detected');
+          break;
+          
+        case 'losing':
+          state.engagement = 42;
+          document.getElementById('cameras').textContent = '8/15';
+          updateGesture('warning');
+          addActivity('⚠️ Audience disengaging');
+          break;
+          
+        case 'time':
+          state.timeRemaining = 45;
+          updateGesture('timeCheck');
+          addActivity('⏱️ Time warning');
+          break;
+          
+        default:
+          state.wpm = 140 + Math.random() * 20;
+          state.engagement = 75 + Math.random() * 10;
+          state.hr = 70 + Math.random() * 15;
+          document.getElementById('stress').textContent = 'Low';
+          document.getElementById('stress').style.color = 'var(--green)';
+          document.getElementById('energy').textContent = 'Med';
+          document.getElementById('energy').style.color = 'var(--yellow)';
+          updateGesture('good');
+      }
+      
+      updateMetrics();
+    }
+    
+    // Natural variations
+    function naturalVariation() {
+      if (state.paused) return;
+      
+      // Small random variations
+      state.wpm += (Math.random() - 0.5) * 10;
+      state.wpm = Math.max(90, Math.min(190, state.wpm));
+      
+      state.engagement += (Math.random() - 0.5) * 5;
+      state.engagement = Math.max(30, Math.min(95, state.engagement));
+      
+      state.hr += (Math.random() - 0.5) * 4;
+      state.hr = Math.max(60, Math.min(120, Math.round(state.hr)));
+      
+      updateMetrics();
+      
+      // Occasional conductor interventions
+      if (Math.random() < 0.1) {
+        if (state.wpm > 165) updateGesture('slowDown');
+        else if (state.wpm < 110) updateGesture('speedUp');
+        else if (state.engagement < 60) updateGesture('warning');
+        else if (state.hr > 95) updateGesture('breathe');
+        else if (state.slide === 1) updateGesture('pause');
+        else if (state.slide === 2) updateGesture('smile');
+        else if (state.slide === 4) updateGesture('keyPoint');
+      }
+    }
+    
+    // Initialize
+    updateSlide();
+    const timerInterval = setInterval(updateTimer, 1000);
+    setInterval(naturalVariation, 2000);
+  </script>
+</body>
+</html>

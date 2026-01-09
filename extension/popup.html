@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Guardian</title>
+  <style>
+    :root {
+      --pink: #d16ba5;
+      --coral: #f28d7d;
+      --orange: #f0856a;
+      --yellow: #f3e06e;
+      --green: #5bd6a2;
+      --cyan: #5ed5d5;
+      --blue: #5da5d5;
+      --purple: #9b6dd6;
+      --dark: #0a0a0f;
+      --dark-card: #12121a;
+      --grid: #1a1a2f;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--dark);
+      color: white;
+      width: 360px;
+      min-height: 480px;
+    }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--dark-card), var(--grid));
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--cyan);
+    }
+    
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border: 2px solid var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .status-dot {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--dark);
+    }
+    
+    .status-dot.connected { background: var(--green); }
+    .status-dot.disconnected { background: var(--coral); }
+    
+    .header-info h1 {
+      font-size: 1rem;
+      color: white;
+    }
+    
+    .header-info .status {
+      font-size: 0.75rem;
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    /* Consent State Card */
+    .consent-card {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+      margin: 1rem;
+      padding: 1rem;
+    }
+    
+    .consent-card h3 {
+      font-size: 0.8rem;
+      color: var(--purple);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .consent-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .consent-item {
+      text-align: center;
+      padding: 0.5rem;
+      background: var(--grid);
+      border-radius: 6px;
+    }
+    
+    .consent-item .label {
+      font-size: 0.65rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+    
+    .consent-item .value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--cyan);
+    }
+    
+    .coherence-bar {
+      margin-top: 0.75rem;
+    }
+    
+    .coherence-bar .label {
+      font-size: 0.7rem;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.25rem;
+    }
+    
+    .coherence-track {
+      height: 6px;
+      background: var(--grid);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    
+    .coherence-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--coral), var(--yellow), var(--green));
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    
+    /* Current Page Status */
+    .page-status {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+      margin: 0 1rem;
+      padding: 1rem;
+    }
+    
+    .page-status h3 {
+      font-size: 0.8rem;
+      color: var(--purple);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .page-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .page-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: var(--grid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .page-icon.safe { background: rgba(93, 214, 162, 0.2); color: var(--green); }
+    .page-icon.warning { background: rgba(243, 224, 110, 0.2); color: var(--yellow); }
+    .page-icon.blocked { background: rgba(242, 141, 125, 0.2); color: var(--coral); }
+    
+    .page-details {
+      flex: 1;
+    }
+    
+    .page-details .domain {
+      font-size: 0.85rem;
+      color: white;
+    }
+    
+    .page-details .category {
+      font-size: 0.7rem;
+      color: #888;
+    }
+    
+    /* Quick Actions */
+    .actions {
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .action-btn {
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--grid);
+      background: var(--dark-card);
+      color: white;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    .action-btn:hover {
+      border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+    
+    .action-btn .icon {
+      font-size: 1.2rem;
+    }
+    
+    .action-btn.danger {
+      border-color: var(--coral);
+      color: var(--coral);
+    }
+    
+    .action-btn.danger:hover {
+      background: rgba(242, 141, 125, 0.1);
+    }
+    
+    /* Today's Stats */
+    .stats {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+      margin: 0 1rem 1rem;
+      padding: 1rem;
+    }
+    
+    .stats h3 {
+      font-size: 0.8rem;
+      color: var(--purple);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .stat-row:last-child {
+      border-bottom: none;
+    }
+    
+    .stat-row .label {
+      font-size: 0.8rem;
+      color: #888;
+    }
+    
+    .stat-row .value {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .stat-row .value.blocked { color: var(--coral); }
+    .stat-row .value.time { color: var(--yellow); }
+    .stat-row .value.safe { color: var(--green); }
+    
+    /* Footer */
+    .footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--grid);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .footer-link {
+      font-size: 0.75rem;
+      color: var(--cyan);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    
+    .footer-link:hover {
+      text-decoration: underline;
+    }
+    
+    .sync-status {
+      font-size: 0.65rem;
+      color: #666;
+    }
+    
+    /* Login Screen */
+    .login-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      min-height: 400px;
+      text-align: center;
+    }
+    
+    .login-screen.active {
+      display: flex;
+    }
+    
+    .login-screen .logo {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    
+    .login-screen h2 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .login-screen p {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1.5rem;
+    }
+    
+    .login-btn {
+      padding: 0.875rem 2rem;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    
+    .login-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    /* Main content hidden when logged out */
+    .main-content {
+      display: block;
+    }
+    
+    .main-content.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Screen -->
+  <div class="login-screen" id="login-screen">
+    <div class="logo">🛡️</div>
+    <h2>DIGIGAMI Guardian</h2>
+    <p>Sign in to sync your Digigami and enable consent-aware protection.</p>
+    <button class="login-btn" id="login-btn">Sign In with DIGIGAMI</button>
+  </div>
+  
+  <!-- Main Content -->
+  <div class="main-content" id="main-content">
+    <!-- Header -->
+    <header class="header">
+      <div class="avatar" id="avatar">
+        <span>🛡️</span>
+        <div class="status-dot connected" id="status-dot"></div>
+      </div>
+      <div class="header-info">
+        <h1 id="user-name">My Digigami</h1>
+        <div class="status">
+          <span id="connection-status">● Connected</span>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Consent State -->
+    <div class="consent-card">
+      <h3>Consent State</h3>
+      <div class="consent-grid">
+        <div class="consent-item">
+          <div class="label">θ Sector</div>
+          <div class="value" id="theta-value">WITNESS</div>
+        </div>
+        <div class="consent-item">
+          <div class="label">φ State</div>
+          <div class="value" id="phi-value">GROUNDED</div>
+        </div>
+        <div class="consent-item">
+          <div class="label">Harmonic</div>
+          <div class="value" id="harmonic-value">h=1</div>
+        </div>
+      </div>
+      <div class="coherence-bar">
+        <div class="label">
+          <span>Coherence</span>
+          <span id="coherence-value">78%</span>
+        </div>
+        <div class="coherence-track">
+          <div class="coherence-fill" id="coherence-fill" style="width: 78%"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Current Page -->
+    <div class="page-status">
+      <h3>Current Page</h3>
+      <div class="page-info">
+        <div class="page-icon safe" id="page-icon">✓</div>
+        <div class="page-details">
+          <div class="domain" id="page-domain">google.com</div>
+          <div class="category" id="page-category">Safe • No restrictions</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="actions">
+      <button class="action-btn" id="btn-settings">
+        <span class="icon">⚙️</span>
+        <span>Settings</span>
+      </button>
+      <button class="action-btn" id="btn-history">
+        <span class="icon">📊</span>
+        <span>Activity</span>
+      </button>
+      <button class="action-btn" id="btn-time-limits">
+        <span class="icon">⏱️</span>
+        <span>Time Limits</span>
+      </button>
+      <button class="action-btn danger" id="btn-panic">
+        <span class="icon">🚨</span>
+        <span>Panic Button</span>
+      </button>
+    </div>
+    
+    <!-- Today's Stats -->
+    <div class="stats">
+      <h3>Today's Activity</h3>
+      <div class="stat-row">
+        <span class="label">Sites Blocked</span>
+        <span class="value blocked" id="stat-blocked">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Social Media Time</span>
+        <span class="value time" id="stat-social-time">0m / 120m</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Safe Browsing Score</span>
+        <span class="value safe" id="stat-safe-score">100%</span>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+      <a class="footer-link" id="link-dashboard">Open Dashboard</a>
+      <span class="sync-status" id="sync-status">Last sync: just now</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Stack Demo - Three Layer Coordination</title>
+  <style>
+    :root {
+      --pink: #d16ba5;
+      --coral: #f28d7d;
+      --orange: #f0856a;
+      --yellow: #f3e06e;
+      --green: #5bd6a2;
+      --cyan: #5ed5d5;
+      --blue: #5da5d5;
+      --purple: #9b6dd6;
+      --dark: #0a0a0f;
+      --dark-card: #12121a;
+      --grid: #1a1a2f;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--dark);
+      color: white;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    
+    .header {
+      text-align: center;
+      padding: 2rem 1rem;
+      border-bottom: 1px solid var(--grid);
+      margin-bottom: 2rem;
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      background: linear-gradient(135deg, var(--cyan), var(--purple), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header p {
+      color: #888;
+      font-size: 1rem;
+    }
+    
+    /* Layer Selector */
+    .layer-selector {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .layer-btn {
+      padding: 1rem 2rem;
+      background: var(--dark-card);
+      border: 2px solid var(--grid);
+      border-radius: 12px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      min-width: 200px;
+    }
+    
+    .layer-btn:hover {
+      border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+    
+    .layer-btn.active {
+      border-color: var(--cyan);
+      background: rgba(94, 213, 213, 0.1);
+    }
+    
+    .layer-btn .icon {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    
+    .layer-btn .name {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .layer-btn .desc {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    
+    /* Main Container */
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    @media (max-width: 1000px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    /* Demo Area */
+    .demo-area {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    /* Browser Chrome Simulation */
+    .browser-chrome {
+      background: #1a1a2f;
+      padding: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .browser-dots {
+      display: flex;
+      gap: 6px;
+    }
+    
+    .browser-dots span {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    
+    .browser-dots span:nth-child(1) { background: #ff5f57; }
+    .browser-dots span:nth-child(2) { background: #ffbd2e; }
+    .browser-dots span:nth-child(3) { background: #28ca41; }
+    
+    .url-bar {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: var(--dark);
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      gap: 0.5rem;
+    }
+    
+    .url-bar .lock {
+      color: var(--green);
+    }
+    
+    .url-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    
+    .breathing-ring {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      animation: breathe 4s ease-in-out infinite;
+    }
+    
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 1; }
+    }
+    
+    /* Page Content */
+    .page-content {
+      padding: 2rem;
+      min-height: 400px;
+      position: relative;
+    }
+    
+    /* Fake Sites */
+    .fake-site {
+      display: none;
+    }
+    
+    .fake-site.active {
+      display: block;
+    }
+    
+    .fake-site.casino {
+      background: linear-gradient(135deg, #1a0a2e, #2d1b4e);
+      padding: 2rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .fake-site.casino h2 {
+      color: gold;
+      font-size: 2rem;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+      margin-bottom: 1rem;
+    }
+    
+    .fake-site.casino .jackpot {
+      font-size: 3rem;
+      color: #ff6b6b;
+      font-weight: bold;
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .fake-site.wine {
+      background: linear-gradient(135deg, #3d1f1f, #5a2d2d);
+      padding: 2rem;
+      border-radius: 8px;
+    }
+    
+    .fake-site.wine h2 {
+      font-family: Georgia, serif;
+      color: #d4a574;
+      margin-bottom: 1rem;
+    }
+    
+    .fake-site.social {
+      background: linear-gradient(135deg, #0a1628, #1a2d4a);
+      padding: 2rem;
+      border-radius: 8px;
+    }
+    
+    .fake-site.social h2 {
+      color: var(--blue);
+      margin-bottom: 1rem;
+    }
+    
+    .fake-site.safe {
+      background: var(--grid);
+      padding: 2rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .fake-site.safe h2 {
+      color: var(--green);
+      margin-bottom: 0.5rem;
+    }
+    
+    /* Block Overlay */
+    .block-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 10, 15, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .block-overlay.active {
+      display: flex;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .block-overlay .shield {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    
+    .block-overlay h3 {
+      font-size: 1.5rem;
+      color: var(--coral);
+      margin-bottom: 0.5rem;
+    }
+    
+    .block-overlay .layer-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--grid);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    
+    .block-overlay .layer-badge.extension { border: 1px solid var(--cyan); color: var(--cyan); }
+    .block-overlay .layer-badge.network { border: 1px solid var(--purple); color: var(--purple); }
+    .block-overlay .layer-badge.browser { border: 1px solid var(--pink); color: var(--pink); }
+    
+    .digigami-message {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      max-width: 400px;
+    }
+    
+    .digigami-message .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    
+    .digigami-message p {
+      color: #ccc;
+      line-height: 1.6;
+    }
+    
+    .block-overlay .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .block-overlay .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+    
+    .block-overlay .btn-primary {
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      color: var(--dark);
+    }
+    
+    .block-overlay .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--grid);
+      color: white;
+    }
+    
+    /* Right Panel */
+    .info-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    /* Test Scenarios */
+    .scenario-card {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    
+    .scenario-card h3 {
+      font-size: 0.9rem;
+      color: var(--purple);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .scenario-btn {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      background: var(--grid);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      text-align: left;
+      margin-bottom: 0.5rem;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .scenario-btn:hover {
+      border-color: var(--cyan);
+      background: rgba(94, 213, 213, 0.1);
+    }
+    
+    .scenario-btn .icon {
+      font-size: 1.25rem;
+    }
+    
+    .scenario-btn .info {
+      flex: 1;
+    }
+    
+    .scenario-btn .name {
+      font-weight: 500;
+      margin-bottom: 0.125rem;
+    }
+    
+    .scenario-btn .desc {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    
+    /* Profile Card */
+    .profile-card {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    
+    .profile-card h3 {
+      font-size: 0.9rem;
+      color: var(--purple);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .profile-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--grid);
+    }
+    
+    .profile-row:last-child {
+      border-bottom: none;
+    }
+    
+    .profile-row .label {
+      color: #888;
+      font-size: 0.85rem;
+    }
+    
+    .profile-row .value {
+      font-weight: 500;
+      font-size: 0.85rem;
+    }
+    
+    .profile-row .value.age {
+      color: var(--yellow);
+    }
+    
+    .age-toggle {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    
+    .age-toggle button {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--grid);
+      background: var(--dark);
+      color: white;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s ease;
+    }
+    
+    .age-toggle button:hover {
+      border-color: var(--cyan);
+    }
+    
+    .age-toggle button.active {
+      background: var(--cyan);
+      color: var(--dark);
+      border-color: var(--cyan);
+    }
+    
+    /* Layer Flow Diagram */
+    .flow-card {
+      background: var(--dark-card);
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    
+    .flow-card h3 {
+      font-size: 0.9rem;
+      color: var(--purple);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--grid);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      opacity: 0.5;
+      transition: all 0.3s ease;
+    }
+    
+    .flow-step.active {
+      opacity: 1;
+      border-left: 3px solid var(--cyan);
+    }
+    
+    .flow-step.blocked {
+      border-left: 3px solid var(--coral);
+    }
+    
+    .flow-step .step-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+    
+    .flow-step .step-icon.network { background: rgba(155, 109, 214, 0.2); }
+    .flow-step .step-icon.extension { background: rgba(94, 213, 213, 0.2); }
+    .flow-step .step-icon.browser { background: rgba(209, 107, 165, 0.2); }
+    
+    .flow-step .step-info {
+      flex: 1;
+    }
+    
+    .flow-step .step-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    
+    .flow-step .step-status {
+      font-size: 0.7rem;
+      color: #888;
+    }
+    
+    .flow-step.blocked .step-status {
+      color: var(--coral);
+    }
+    
+    /* Notification */
+    .notification {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: var(--dark-card);
+      border: 1px solid var(--purple);
+      border-radius: 12px;
+      padding: 1rem;
+      max-width: 300px;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    .notification .header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding: 0;
+      border: none;
+    }
+    
+    .notification .title {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    
+    .notification .message {
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>🛡️ DIGIGAMI Stack Demo</h1>
+    <p>Three-layer consent infrastructure working together</p>
+  </header>
+  
+  <!-- Layer Selector -->
+  <div class="layer-selector">
+    <button class="layer-btn active" data-layer="extension">
+      <span class="icon">🧩</span>
+      <span class="name">Browser Extension</span>
+      <span class="desc">Lightweight, cross-browser</span>
+    </button>
+    <button class="layer-btn" data-layer="network">
+      <span class="icon">🌐</span>
+      <span class="name">Network Layer</span>
+      <span class="desc">Router/DNS protection</span>
+    </button>
+    <button class="layer-btn" data-layer="browser">
+      <span class="icon">🦊</span>
+      <span class="name">DIGIGAMI Browser</span>
+      <span class="desc">Full sovereignty</span>
+    </button>
+  </div>
+  
+  <div class="main-container">
+    <!-- Demo Area -->
+    <div class="demo-area">
+      <div class="browser-chrome">
+        <div class="browser-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="url-bar">
+          <span class="lock">🔒</span>
+          <input type="text" id="url-input" value="https://google.com" readonly>
+        </div>
+        <div class="breathing-ring" title="Digigami Status">🛡️</div>
+      </div>
+      
+      <div class="page-content">
+        <!-- Fake Sites -->
+        <div class="fake-site safe active" id="site-safe">
+          <h2>✓ Safe Browsing</h2>
+          <p>This site has no restrictions. Browse freely!</p>
+        </div>
+        
+        <div class="fake-site casino" id="site-casino">
+          <h2>🎰 LUCKY JACKPOT CASINO 🎰</h2>
+          <div class="jackpot">$1,234,567</div>
+          <p style="color: gold; margin-top: 1rem;">SPIN TO WIN! 18+ ONLY</p>
+        </div>
+        
+        <div class="fake-site wine" id="site-wine">
+          <h2>🍷 Premium Wine Collection</h2>
+          <p style="color: #d4a574;">Curated selections from Napa Valley</p>
+          <p style="color: #888; margin-top: 1rem; font-size: 0.9rem;">You must be 21+ to purchase</p>
+        </div>
+        
+        <div class="fake-site social" id="site-social">
+          <h2>📱 SocialApp</h2>
+          <p style="color: #aaa;">See what your friends are up to!</p>
+          <p style="color: var(--yellow); margin-top: 1rem; font-size: 0.9rem;">⚠️ Time limit: 2 hours/day</p>
+        </div>
+        
+        <!-- Block Overlay -->
+        <div class="block-overlay" id="block-overlay">
+          <div class="shield">🛡️</div>
+          <h3 id="block-title">Access Blocked</h3>
+          <div class="layer-badge extension" id="layer-badge">
+            <span>🧩</span> Blocked by Extension
+          </div>
+          
+          <div class="digigami-message">
+            <div class="avatar">😊</div>
+            <p id="digigami-text">Hey, I noticed you're trying to access a gambling site. Based on your profile, I can't let you through. Let's find something else to do!</p>
+          </div>
+          
+          <div class="actions">
+            <button class="btn btn-primary" onclick="goBack()">← Go Back</button>
+            <button class="btn btn-secondary" onclick="requestException()">Request Exception</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Info Panel -->
+    <div class="info-panel">
+      <!-- Profile Card -->
+      <div class="profile-card">
+        <h3>Test Profile</h3>
+        <div class="profile-row">
+          <span class="label">Name</span>
+          <span class="value">Demo User</span>
+        </div>
+        <div class="profile-row">
+          <span class="label">Age</span>
+          <span class="value age" id="profile-age">16</span>
+        </div>
+        <div class="profile-row">
+          <span class="label">Coherence</span>
+          <span class="value" style="color: var(--green)">78%</span>
+        </div>
+        <div class="age-toggle">
+          <button class="active" onclick="setAge(16)">Minor (16)</button>
+          <button onclick="setAge(25)">Adult (25)</button>
+        </div>
+      </div>
+      
+      <!-- Test Scenarios -->
+      <div class="scenario-card">
+        <h3>Test Scenarios</h3>
+        <button class="scenario-btn" onclick="testScenario('casino')">
+          <span class="icon">🎰</span>
+          <div class="info">
+            <div class="name">Casino Site</div>
+            <div class="desc">Gambling - Requires 21+</div>
+          </div>
+        </button>
+        <button class="scenario-btn" onclick="testScenario('wine')">
+          <span class="icon">🍷</span>
+          <div class="info">
+            <div class="name">Wine Store</div>
+            <div class="desc">Alcohol - Requires 21+</div>
+          </div>
+        </button>
+        <button class="scenario-btn" onclick="testScenario('social')">
+          <span class="icon">📱</span>
+          <div class="info">
+            <div class="name">Social Media</div>
+            <div class="desc">Time-limited category</div>
+          </div>
+        </button>
+        <button class="scenario-btn" onclick="testScenario('safe')">
+          <span class="icon">✓</span>
+          <div class="info">
+            <div class="name">Safe Site</div>
+            <div class="desc">No restrictions</div>
+          </div>
+        </button>
+      </div>
+      
+      <!-- Flow Diagram -->
+      <div class="flow-card">
+        <h3>Request Flow</h3>
+        <div class="flow-step" id="flow-network">
+          <div class="step-icon network">🌐</div>
+          <div class="step-info">
+            <div class="step-name">Network Layer</div>
+            <div class="step-status">DNS check...</div>
+          </div>
+        </div>
+        <div class="flow-step" id="flow-extension">
+          <div class="step-icon extension">🧩</div>
+          <div class="step-info">
+            <div class="step-name">Extension</div>
+            <div class="step-status">webRequest check...</div>
+          </div>
+        </div>
+        <div class="flow-step" id="flow-browser">
+          <div class="step-icon browser">🦊</div>
+          <div class="step-info">
+            <div class="step-name">Browser Core</div>
+            <div class="step-status">Navigation check...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Push Notification -->
+  <div class="notification" id="notification">
+    <div class="header">
+      <span>🌐</span>
+      <span class="title">Network Guardian</span>
+    </div>
+    <div class="message" id="notification-message">Blocked casino.com on your network</div>
+  </div>
+
+  <script>
+    // State
+    let state = {
+      layer: 'extension',
+      age: 16,
+      currentSite: 'safe',
+    };
+    
+    // Site requirements
+    const siteRequirements = {
+      casino: { minAge: 21, category: 'gambling', url: 'https://casino.com' },
+      wine: { minAge: 21, category: 'alcohol', url: 'https://wine.com' },
+      social: { minAge: 13, category: 'social_media', url: 'https://socialapp.com', timeLimit: true },
+      safe: { minAge: 0, category: 'general', url: 'https://google.com' },
+    };
+    
+    // Layer messages
+    const layerMessages = {
+      extension: {
+        badge: '🧩 Blocked by Extension',
+        badgeClass: 'extension',
+        messages: {
+          gambling: "Hey, I noticed you're trying to access a gambling site. Your profile shows you're {age}, and this requires 21+. Let's find something else!",
+          alcohol: "This site sells alcohol, which requires you to be 21+. Since you're {age}, I can't let you through right now.",
+        }
+      },
+      network: {
+        badge: '🌐 Blocked at Network Level',
+        badgeClass: 'network',
+        messages: {
+          gambling: "This request was blocked at your router before it could even load. Gambling sites are blocked for users under 21 on your network.",
+          alcohol: "Network Guardian blocked this alcohol vendor at the DNS level. The page never loaded because your profile shows you're {age}.",
+        }
+      },
+      browser: {
+        badge: '🦊 Blocked by DIGIGAMI Browser',
+        badgeClass: 'browser',
+        messages: {
+          gambling: "DIGIGAMI Browser's native consent layer blocked this navigation. Gambling sites require users to be 21+, and your verified age is {age}.",
+          alcohol: "As your browser's built-in consent system, I can't navigate to alcohol vendors for users under 21. Your verified age is {age}.",
+        }
+      }
+    };
+    
+    // DOM Elements
+    const urlInput = document.getElementById('url-input');
+    const blockOverlay = document.getElementById('block-overlay');
+    const blockTitle = document.getElementById('block-title');
+    const layerBadge = document.getElementById('layer-badge');
+    const digigamiText = document.getElementById('digigami-text');
+    const profileAge = document.getElementById('profile-age');
+    const notification = document.getElementById('notification');
+    const notificationMessage = document.getElementById('notification-message');
+    
+    // Layer selection
+    document.querySelectorAll('.layer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.layer = btn.dataset.layer;
+        
+        // Re-test current scenario with new layer
+        if (state.currentSite !== 'safe') {
+          testScenario(state.currentSite);
+        }
+      });
+    });
+    
+    // Set age
+    function setAge(age) {
+      state.age = age;
+      profileAge.textContent = age;
+      
+      document.querySelectorAll('.age-toggle button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Re-test current scenario with new age
+      testScenario(state.currentSite);
+    }
+    
+    // Test scenario
+    function testScenario(site) {
+      state.currentSite = site;
+      const req = siteRequirements[site];
+      
+      // Update URL
+      urlInput.value = req.url;
+      
+      // Hide all sites
+      document.querySelectorAll('.fake-site').forEach(s => s.classList.remove('active'));
+      
+      // Reset flow
+      resetFlow();
+      
+      // Simulate request flow
+      simulateFlow(site, req);
+    }
+    
+    function resetFlow() {
+      document.querySelectorAll('.flow-step').forEach(step => {
+        step.classList.remove('active', 'blocked');
+        step.querySelector('.step-status').textContent = 'Waiting...';
+      });
+      blockOverlay.classList.remove('active');
+    }
+    
+    async function simulateFlow(site, req) {
+      const shouldBlock = state.age < req.minAge;
+      
+      // Determine which layer blocks (based on active layer)
+      let blockingLayer = null;
+      if (shouldBlock) {
+        blockingLayer = state.layer;
+      }
+      
+      // Step 1: Network Layer
+      const networkStep = document.getElementById('flow-network');
+      networkStep.classList.add('active');
+      networkStep.querySelector('.step-status').textContent = 'Checking DNS...';
+      await sleep(500);
+      
+      if (blockingLayer === 'network') {
+        networkStep.classList.add('blocked');
+        networkStep.querySelector('.step-status').textContent = '✗ BLOCKED';
+        showBlock(site, req, 'network');
+        showNotification(`Blocked ${req.url.replace('https://', '')} at router`);
+        return;
+      }
+      
+      networkStep.querySelector('.step-status').textContent = '✓ Passed';
+      await sleep(300);
+      
+      // Step 2: Extension
+      const extensionStep = document.getElementById('flow-extension');
+      extensionStep.classList.add('active');
+      extensionStep.querySelector('.step-status').textContent = 'webRequest check...';
+      await sleep(500);
+      
+      if (blockingLayer === 'extension') {
+        extensionStep.classList.add('blocked');
+        extensionStep.querySelector('.step-status').textContent = '✗ BLOCKED';
+        showBlock(site, req, 'extension');
+        return;
+      }
+      
+      extensionStep.querySelector('.step-status').textContent = '✓ Passed';
+      await sleep(300);
+      
+      // Step 3: Browser
+      const browserStep = document.getElementById('flow-browser');
+      browserStep.classList.add('active');
+      browserStep.querySelector('.step-status').textContent = 'Navigation check...';
+      await sleep(500);
+      
+      if (blockingLayer === 'browser') {
+        browserStep.classList.add('blocked');
+        browserStep.querySelector('.step-status').textContent = '✗ BLOCKED';
+        showBlock(site, req, 'browser');
+        return;
+      }
+      
+      browserStep.querySelector('.step-status').textContent = '✓ Passed';
+      
+      // All passed - show site
+      document.getElementById(`site-${site}`).classList.add('active');
+    }
+    
+    function showBlock(site, req, layer) {
+      const config = layerMessages[layer];
+      
+      // Update badge
+      layerBadge.textContent = config.badge;
+      layerBadge.className = `layer-badge ${config.badgeClass}`;
+      
+      // Update message
+      let message = config.messages[req.category] || "This site is blocked based on your profile settings.";
+      message = message.replace('{age}', state.age);
+      digigamiText.textContent = message;
+      
+      // Update title
+      blockTitle.textContent = `${req.category.charAt(0).toUpperCase() + req.category.slice(1)} Site Blocked`;
+      
+      // Show overlay
+      blockOverlay.classList.add('active');
+    }
+    
+    function showNotification(message) {
+      notificationMessage.textContent = message;
+      notification.classList.add('show');
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 4000);
+    }
+    
+    function goBack() {
+      testScenario('safe');
+    }
+    
+    function requestException() {
+      alert('Exception request sent to Guardian. They will be notified and can approve or deny.');
+    }
+    
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // Initialize
+    testScenario('safe');
+  </script>
+</body>
+</html>

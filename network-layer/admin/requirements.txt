@@ -1,0 +1,3 @@
+# DIGIGAMI Guardian Admin Dashboard Requirements
+aiohttp>=3.8.0
+aiohttp-cors>=0.7.0

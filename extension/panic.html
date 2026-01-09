@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Guardian - Safe Space</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f19 0%, #1a1a2e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .container {
+      max-width: 480px;
+      padding: 48px;
+      text-align: center;
+    }
+
+    .avatar {
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 40px;
+    }
+
+    .avatar svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .avatar-ring {
+      fill: none;
+      stroke: #ef4444;
+      stroke-width: 2;
+      animation: panic-pulse 2s ease-in-out infinite;
+    }
+
+    .avatar-core {
+      fill: #dc2626;
+    }
+
+    @keyframes panic-pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fca5a5;
+    }
+
+    .message {
+      font-size: 18px;
+      line-height: 1.7;
+      color: #a0a0a0;
+      margin-bottom: 40px;
+    }
+
+    /* Breathing exercise */
+    .breathing-section {
+      margin: 48px 0;
+    }
+
+    .breathing-circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.15);
+      border: 3px solid rgba(239, 68, 68, 0.3);
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: breathe 8s ease-in-out infinite;
+    }
+
+    .breathing-text {
+      font-size: 14px;
+      color: #888;
+      animation: breathe-text 8s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% {
+        transform: scale(0.7);
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.2);
+      }
+      25% {
+        transform: scale(1);
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.4);
+      }
+      50% {
+        transform: scale(1);
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.4);
+      }
+      75% {
+        transform: scale(0.7);
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.2);
+      }
+    }
+
+    @keyframes breathe-text {
+      0%, 20% { content: 'Breathe in...'; }
+      25%, 45% { content: 'Hold...'; }
+      50%, 70% { content: 'Breathe out...'; }
+      75%, 95% { content: 'Hold...'; }
+    }
+
+    .breathe-instruction {
+      font-size: 20px;
+      color: #c0c0c0;
+      margin-bottom: 8px;
+      min-height: 30px;
+    }
+
+    .breathe-counter {
+      font-size: 48px;
+      font-weight: 200;
+      color: #ef4444;
+      margin-bottom: 16px;
+    }
+
+    /* Actions */
+    .actions {
+      margin-top: 48px;
+    }
+
+    .btn {
+      padding: 18px 40px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .btn-calm {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white;
+    }
+
+    .btn-calm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(34, 197, 94, 0.35);
+    }
+
+    .btn-calm:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #a0a0a0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .timer-note {
+      font-size: 13px;
+      color: #666;
+      margin-top: 16px;
+    }
+
+    /* Background animation */
+    .bg-gradient {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.05) 0%, transparent 70%);
+      animation: bg-pulse 4s ease-in-out infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    @keyframes bg-pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Calm state */
+    .calm .avatar-ring {
+      stroke: #22c55e;
+      animation: calm-pulse 3s ease-in-out infinite;
+    }
+
+    .calm .avatar-core {
+      fill: #16a34a;
+    }
+
+    .calm h1 {
+      color: #86efac;
+    }
+
+    .calm .breathing-circle {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    @keyframes calm-pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 0.9; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+
+  <div class="container" id="mainContainer">
+    <div class="avatar">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" class="avatar-ring"/>
+        <circle cx="50" cy="50" r="35" class="avatar-core"/>
+      </svg>
+    </div>
+
+    <h1 id="title">Take a Moment</h1>
+
+    <p class="message" id="message">
+      You activated the emergency pause. That's okay. Let's take a few breaths together.
+    </p>
+
+    <div class="breathing-section">
+      <div class="breathing-circle"></div>
+      <p class="breathe-instruction" id="breatheInstruction">Breathe in...</p>
+      <p class="breathe-counter" id="breatheCounter">4</p>
+      <p class="breathing-text">Follow the circle</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-calm" id="continueBtn" disabled>
+        I'm feeling calmer
+      </button>
+      <button class="btn btn-secondary" id="stayBtn">
+        Stay a while longer
+      </button>
+    </div>
+
+    <p class="timer-note" id="timerNote">
+      Continue button unlocks in <span id="countdown">30</span> seconds
+    </p>
+  </div>
+
+  <script>
+    // Breathing exercise
+    const phases = [
+      { text: 'Breathe in...', duration: 4000, count: [4, 3, 2, 1] },
+      { text: 'Hold...', duration: 4000, count: [4, 3, 2, 1] },
+      { text: 'Breathe out...', duration: 4000, count: [4, 3, 2, 1] },
+      { text: 'Hold...', duration: 4000, count: [4, 3, 2, 1] },
+    ];
+
+    let phaseIndex = 0;
+    let countIndex = 0;
+
+    function updateBreathing() {
+      const phase = phases[phaseIndex];
+      document.getElementById('breatheInstruction').textContent = phase.text;
+      document.getElementById('breatheCounter').textContent = phase.count[countIndex];
+
+      countIndex++;
+      if (countIndex >= phase.count.length) {
+        countIndex = 0;
+        phaseIndex = (phaseIndex + 1) % phases.length;
+      }
+    }
+
+    // Start breathing animation
+    updateBreathing();
+    setInterval(updateBreathing, 1000);
+
+    // Countdown timer
+    let countdown = 30;
+    const countdownEl = document.getElementById('countdown');
+    const continueBtn = document.getElementById('continueBtn');
+    const timerNote = document.getElementById('timerNote');
+
+    const timer = setInterval(() => {
+      countdown--;
+      countdownEl.textContent = countdown;
+
+      if (countdown <= 0) {
+        clearInterval(timer);
+        continueBtn.disabled = false;
+        timerNote.style.display = 'none';
+
+        // Switch to calm state
+        document.getElementById('mainContainer').classList.add('calm');
+        document.getElementById('title').textContent = 'Feeling Better?';
+        document.getElementById('message').textContent =
+          'When you\'re ready, you can continue browsing. Take all the time you need.';
+      }
+    }, 1000);
+
+    // Continue button
+    continueBtn.addEventListener('click', () => {
+      // Notify background
+      chrome.runtime.sendMessage({ type: 'PANIC_RESOLVED' });
+
+      // Close this tab or go to new tab
+      chrome.tabs.getCurrent((tab) => {
+        if (tab) {
+          chrome.tabs.remove(tab.id);
+        }
+      });
+    });
+
+    // Stay button
+    document.getElementById('stayBtn').addEventListener('click', () => {
+      // Reset countdown
+      countdown = 60;
+      continueBtn.disabled = true;
+      timerNote.style.display = 'block';
+      document.getElementById('mainContainer').classList.remove('calm');
+      document.getElementById('title').textContent = 'Take a Moment';
+      document.getElementById('message').textContent =
+        'There\'s no rush. Stay as long as you need.';
+    });
+  </script>
+</body>
+</html>

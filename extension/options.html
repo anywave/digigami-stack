@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGIGAMI Guardian Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f19 0%, #1a1a2e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      width: 60px;
+      height: 60px;
+    }
+
+    .logo svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .logo circle {
+      fill: #4f46e5;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    h1 span {
+      color: #818cf8;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: #6366f1;
+      border-radius: 2px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-info h3 {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .setting-info p {
+      font-size: 13px;
+      color: #888;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 52px;
+      height: 28px;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 28px;
+      transition: 0.3s;
+    }
+
+    .toggle-slider::before {
+      position: absolute;
+      content: '';
+      height: 22px;
+      width: 22px;
+      left: 3px;
+      bottom: 3px;
+      background: #888;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background: #4f46e5;
+    }
+
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(24px);
+      background: white;
+    }
+
+    /* Category list */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .category-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .category-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .category-item.active {
+      border-color: #6366f1;
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .category-checkbox {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #555;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .category-item.active .category-checkbox {
+      background: #6366f1;
+      border-color: #6366f1;
+    }
+
+    .category-checkbox::after {
+      content: '✓';
+      color: white;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .category-item.active .category-checkbox::after {
+      opacity: 1;
+    }
+
+    .category-name {
+      font-size: 14px;
+    }
+
+    /* Slider input */
+    .slider-container {
+      margin-top: 16px;
+    }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      appearance: none;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    /* Buttons */
+    .button-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #a0a0a0;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    /* Status message */
+    .status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success {
+      display: block;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #4ade80;
+    }
+
+    .status.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40"/>
+        </svg>
+      </div>
+      <h1>DIGIGAMI <span>Guardian</span> Settings</h1>
+    </header>
+
+    <div class="section">
+      <h2 class="section-title">General</h2>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Enable Guardian Protection</h3>
+          <p>Master switch for all consent-aware blocking</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="enabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Show Notifications</h3>
+          <p>Alert when content is blocked or bypass requested</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="notifications" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Coherence-Based Decisions</h3>
+          <p>Use biometric coherence to adjust blocking sensitivity</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="coherenceMode">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Blocked Categories</h2>
+      <p style="color: #888; font-size: 14px; margin-bottom: 16px;">
+        Select categories to block. These are enforced based on your consent state.
+      </p>
+
+      <div class="category-grid" id="categoryGrid">
+        <div class="category-item active" data-category="gambling">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Gambling</span>
+        </div>
+        <div class="category-item active" data-category="adult">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Adult Content</span>
+        </div>
+        <div class="category-item" data-category="alcohol">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Alcohol</span>
+        </div>
+        <div class="category-item" data-category="tobacco">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Tobacco</span>
+        </div>
+        <div class="category-item" data-category="drugs">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Drugs</span>
+        </div>
+        <div class="category-item" data-category="violence">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Violence</span>
+        </div>
+        <div class="category-item" data-category="social-media">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Social Media</span>
+        </div>
+        <div class="category-item" data-category="gaming">
+          <div class="category-checkbox"></div>
+          <span class="category-name">Gaming Sites</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Time Limits</h2>
+
+      <div class="slider-container">
+        <div class="slider-labels">
+          <span>Daily browsing limit</span>
+          <span id="timeLimitValue">4 hours</span>
+        </div>
+        <input type="range" id="timeLimit" min="1" max="12" value="4">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Cloud Sync</h2>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Sync with DIGIGAMI Cloud</h3>
+          <p>Keep consent state synchronized across devices</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="cloudSync">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Hedera Anchoring</h3>
+          <p>Anchor consent decisions to blockchain for audit trail</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="hederaAnchor">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button class="btn btn-primary" id="saveBtn">Save Settings</button>
+      <button class="btn btn-secondary" id="resetBtn">Reset to Defaults</button>
+      <button class="btn btn-danger" id="clearDataBtn">Clear All Data</button>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

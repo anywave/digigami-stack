@@ -1,0 +1,231 @@
+/**
+ * DIGIGAMI Guardian - Overlay Styles
+ */
+
+#digigami-block-overlay,
+#digigami-panic-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483647 !important;
+  background: rgba(15, 15, 25, 0.97) !important;
+  backdrop-filter: blur(20px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif !important;
+}
+
+.digigami-overlay-container {
+  max-width: 480px;
+  padding: 40px;
+  text-align: center;
+}
+
+.digigami-overlay-content {
+  color: #e0e0e0;
+}
+
+/* Avatar */
+.digigami-avatar {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 30px;
+}
+
+.digigami-avatar-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-ring {
+  fill: none;
+  stroke: #6366f1;
+  stroke-width: 2;
+  opacity: 0.6;
+  animation: ring-pulse 3s ease-in-out infinite;
+}
+
+.avatar-core {
+  fill: #4f46e5;
+  opacity: 0.8;
+}
+
+.panic-pulse .avatar-ring {
+  stroke: #ef4444;
+  animation: panic-ring 1s ease-in-out infinite;
+}
+
+.panic-pulse .avatar-core {
+  fill: #dc2626;
+}
+
+@keyframes ring-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+@keyframes panic-ring {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+/* Typography */
+.digigami-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: #ffffff;
+}
+
+.digigami-reason {
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 24px;
+  color: #a0a0a0;
+}
+
+.digigami-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(99, 102, 241, 0.15);
+  border-radius: 20px;
+  margin-bottom: 32px;
+}
+
+.category-label {
+  font-size: 12px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.category-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #818cf8;
+}
+
+/* Buttons */
+.digigami-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.digigami-btn {
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.digigami-btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+}
+
+.digigami-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+}
+
+.digigami-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #a0a0a0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.digigami-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* Coherence indicator */
+.digigami-coherence {
+  margin-bottom: 24px;
+}
+
+.coherence-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.coherence-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.coherence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #22c55e 100%);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Footer */
+.digigami-footer {
+  font-size: 13px;
+  color: #555;
+  font-style: italic;
+}
+
+/* Breathing guide for panic mode */
+.digigami-breathing-guide {
+  margin: 32px 0;
+}
+
+.breathing-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.2);
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  margin: 0 auto 16px;
+  animation: breathe 6s ease-in-out infinite;
+}
+
+.breathing-text {
+  font-size: 14px;
+  color: #888;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(0.8); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Panic mode colors */
+.digigami-panic .digigami-title {
+  color: #fca5a5;
+}
+
+.digigami-panic .digigami-btn-primary {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* Animation for denied access */
+.digigami-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}

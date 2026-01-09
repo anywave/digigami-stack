@@ -1,0 +1,81 @@
+# DIGIGAMI Guardian Full Stack
+# Includes: Guardian DNS + Admin Dashboard + Block Page
+#
+# Usage:
+#   docker compose -f docker-compose.full.yml up -d
+#
+# Access:
+#   - Admin Dashboard: http://localhost:8082
+#   - DNS Server: localhost:53
+#   - Block Page: http://localhost:8081
+
+version: '3.8'
+
+services:
+  # DIGIGAMI Guardian DNS Server
+  guardian-dns:
+    build: .
+    container_name: digigami-guardian-dns
+    hostname: guardian-dns
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "80:80"  # Block page served by Guardian
+    environment:
+      - DIGIGAMI_CLOUD_URL=${DIGIGAMI_CLOUD_URL:-wss://api.digigami.ai/v1/spiral}
+      - DIGIGAMI_API_KEY=${DIGIGAMI_API_KEY}
+      - UPSTREAM_DNS=${UPSTREAM_DNS:-8.8.8.8}
+      - UPSTREAM_PORT=${UPSTREAM_PORT:-53}
+      - BLOCK_PAGE_IP=${BLOCK_PAGE_IP:-192.168.1.100}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - guardian_data:/var/lib/digigami
+    networks:
+      - guardian_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.settimeout(1); s.sendto(b'', ('127.0.0.1', 53))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # DIGIGAMI Admin Dashboard
+  admin-dashboard:
+    build: ./admin
+    container_name: digigami-admin
+    hostname: admin
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      - ADMIN_PORT=8082
+      - ADMIN_SECRET=${ADMIN_SECRET:-changeme}
+      - DIGIGAMI_DB_PATH=/data/guardian.db
+    volumes:
+      - guardian_data:/data
+    networks:
+      - guardian_network
+    depends_on:
+      guardian-dns:
+        condition: service_healthy
+
+  # Optional: Standalone Block Page Server
+  # Uncomment if you want a separate block page server
+  # block-page:
+  #   image: nginx:alpine
+  #   container_name: digigami-blockpage
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8081:80"
+  #   volumes:
+  #     - ./blockpage:/usr/share/nginx/html:ro
+  #   networks:
+  #     - guardian_network
+
+networks:
+  guardian_network:
+    driver: bridge
+
+volumes:
+  guardian_data:
+    driver: local

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  guardian-dns:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: digigami-guardian-dns
+    restart: unless-stopped
+
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "80:80"
+
+    environment:
+      - DIGIGAMI_DNS_PORT=53
+      - DIGIGAMI_UPSTREAM_DNS=8.8.8.8
+      - DIGIGAMI_CLOUD_API=https://api.digigami.ai/v1
+      - DIGIGAMI_SYNC_INTERVAL=30
+      - DIGIGAMI_BLOCK_PAGE_IP=${HOST_IP:-192.168.1.1}
+      - DIGIGAMI_NETWORK_ID=${NETWORK_ID:-}
+
+    volumes:
+      # Persist database
+      - guardian-data:/var/lib/digigami
+      # Network token (mount from host)
+      - ./config/network_token:/etc/digigami/network_token:ro
+
+    networks:
+      - digigami-network
+
+    # Needed for DNS on port 53
+    cap_add:
+      - NET_BIND_SERVICE
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "dig", "@localhost", "-p", "53", "localhost", "+short"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  guardian-data:
+    driver: local
+
+networks:
+  digigami-network:
+    driver: bridge

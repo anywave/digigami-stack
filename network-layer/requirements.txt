@@ -1,0 +1,16 @@
+# DIGIGAMI Network Guardian Dependencies
+
+# DNS handling
+dnslib>=0.9.23
+
+# Async HTTP client for cloud sync
+aiohttp>=3.9.0
+
+# Web server for block page
+aiohttp[speedups]>=3.9.0
+
+# Data validation (optional, for config)
+pydantic>=2.0.0
+
+# Environment variable support
+python-dotenv>=1.0.0
