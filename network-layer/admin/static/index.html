@@ -75,6 +75,10 @@
             <span class="icon">💻</span>
             <span>Network Status</span>
           </a>
+          <a href="#" class="nav-item" data-page="alerts">
+            <span class="icon">🔔</span>
+            <span>Alerts</span>
+          </a>
         </nav>
         <div class="sidebar-footer">
           <button id="logout-btn" class="btn btn-secondary btn-full">Sign Out</button>
@@ -347,6 +351,107 @@
               </select>
             </div>
             <div id="top-blocked-list" class="table-container"></div>
+          </div>
+        </section>
+
+        <!-- Alerts Page -->
+        <section id="page-alerts" class="page hidden">
+          <header class="page-header">
+            <h2>Alert Settings</h2>
+            <button class="btn btn-secondary" onclick="loadAlerts()">↻ Refresh</button>
+          </header>
+
+          <!-- Alert Status Banner -->
+          <div id="alerts-status-banner" class="status-banner"></div>
+
+          <!-- Alert Stats -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">📧</div>
+              <div class="stat-content">
+                <div class="stat-value" id="alert-email-count">-</div>
+                <div class="stat-label">Email Recipients</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🔗</div>
+              <div class="stat-content">
+                <div class="stat-value" id="alert-webhook-count">-</div>
+                <div class="stat-label">Webhooks</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📨</div>
+              <div class="stat-content">
+                <div class="stat-value" id="alert-sent-today">-</div>
+                <div class="stat-label">Sent Today</div>
+              </div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-icon">✅</div>
+              <div class="stat-content">
+                <div class="stat-value" id="alert-status">-</div>
+                <div class="stat-label">Status</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <!-- Email Recipients -->
+            <div class="card">
+              <h3>Email Recipients</h3>
+              <div class="add-recipient-form">
+                <input type="email" id="new-email-recipient" placeholder="Enter email address" class="input">
+                <button class="btn btn-primary" onclick="addEmailRecipient()">Add</button>
+              </div>
+              <div id="email-recipients-list" class="list-container"></div>
+            </div>
+
+            <!-- Webhooks -->
+            <div class="card">
+              <h3>Webhooks</h3>
+              <div class="add-webhook-form">
+                <input type="text" id="new-webhook-name" placeholder="Webhook name" class="input input-small">
+                <input type="url" id="new-webhook-url" placeholder="https://..." class="input">
+                <button class="btn btn-primary" onclick="addWebhook()">Add</button>
+              </div>
+              <div id="webhooks-list" class="list-container"></div>
+            </div>
+          </div>
+
+          <!-- Alert Type Settings -->
+          <div class="card">
+            <h3>Alert Types</h3>
+            <p class="card-description">Configure which events trigger notifications</p>
+            <div id="alert-types-settings" class="settings-grid"></div>
+          </div>
+
+          <!-- SMTP Configuration -->
+          <div class="card">
+            <h3>SMTP Configuration</h3>
+            <p class="card-description">Email server settings (configured via environment variables)</p>
+            <div id="smtp-config-display" class="config-display"></div>
+          </div>
+
+          <!-- Test Alert -->
+          <div class="card">
+            <h3>Test Notifications</h3>
+            <p class="card-description">Send a test alert to verify your configuration</p>
+            <div class="test-alert-form">
+              <select id="test-alert-channel" class="select">
+                <option value="email">Email</option>
+                <option value="webhook">Webhook</option>
+              </select>
+              <button class="btn btn-secondary" onclick="sendTestAlert()">Send Test Alert</button>
+            </div>
+            <div id="test-alert-result" class="alert-result"></div>
+          </div>
+
+          <!-- Alert History -->
+          <div class="card">
+            <h3>Recent Alert History</h3>
+            <div id="alert-history-list" class="table-container"></div>
+            <div id="alert-history-pagination" class="pagination"></div>
           </div>
         </section>
 

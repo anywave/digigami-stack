@@ -30,6 +30,16 @@ try:
 except ImportError:
     NEXTDNS_AVAILABLE = False
 
+# Import alert service
+try:
+    from alert_service import (
+        AlertService, AlertConfig, Alert, AlertType, AlertChannel,
+        get_alert_service
+    )
+    ALERTS_AVAILABLE = True
+except ImportError:
+    ALERTS_AVAILABLE = False
+
 # Configuration
 @dataclass
 class AdminConfig:
@@ -44,7 +54,39 @@ class AdminConfig:
     nextdns_api_key: str = os.environ.get("NEXTDNS_API_KEY", "")
     nextdns_profile_id: str = os.environ.get("NEXTDNS_PROFILE_ID", "")
 
+    # Alert settings
+    alerts_enabled: bool = os.environ.get("ALERTS_ENABLED", "true").lower() == "true"
+    smtp_host: str = os.environ.get("SMTP_HOST", "")
+    smtp_port: int = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user: str = os.environ.get("SMTP_USER", "")
+    smtp_password: str = os.environ.get("SMTP_PASSWORD", "")
+    smtp_from_email: str = os.environ.get("SMTP_FROM_EMAIL", "guardian@digigami.ai")
+    alert_webhook_url: str = os.environ.get("ALERT_WEBHOOK_URL", "")
+
 config = AdminConfig()
+
+# Alert service instance (initialized lazily)
+_alert_service: Optional[AlertService] = None
+
+def get_alert_svc() -> Optional[AlertService]:
+    """Get or create the alert service instance"""
+    global _alert_service
+
+    if not ALERTS_AVAILABLE or not config.alerts_enabled:
+        return None
+
+    if _alert_service is None:
+        alert_config = AlertConfig(
+            smtp_host=config.smtp_host,
+            smtp_port=config.smtp_port,
+            smtp_user=config.smtp_user,
+            smtp_password=config.smtp_password,
+            smtp_from_email=config.smtp_from_email,
+            default_webhook_url=config.alert_webhook_url
+        )
+        _alert_service = AlertService(config.db_path, alert_config)
+
+    return _alert_service
 
 # NextDNS client (initialized lazily)
 _nextdns_client: Optional[NextDNSClient] = None
@@ -455,6 +497,18 @@ async def api_submit_bypass_request(request):
         conn.commit()
         conn.close()
 
+        # Send alert notification for new bypass request
+        alert_service = get_alert_svc()
+        if alert_service:
+            asyncio.create_task(
+                alert_service.send_bypass_request_alert(
+                    device_id=device_id,
+                    domain=domain,
+                    reason=reason,
+                    request_id=request_id
+                )
+            )
+
         return web.json_response({"success": True, "request_id": request_id})
     except Exception as e:
         return web.json_response({"error": str(e)}, status=400)
@@ -505,6 +559,19 @@ async def api_review_bypass(request):
 
         log_audit(session["username"], f"bypass_{action}", f"request:{request_id}",
                   f"domain={bypass_req['domain']}, duration={duration}min")
+
+        # Send alert notification
+        alert_service = get_alert_svc()
+        if alert_service:
+            asyncio.create_task(
+                alert_service.send_bypass_decision_alert(
+                    device_id=bypass_req["device_id"],
+                    domain=bypass_req["domain"],
+                    approved=(action == "approve"),
+                    duration=duration if action == "approve" else None,
+                    notes=notes
+                )
+            )
 
         return web.json_response({"success": True, "status": status})
     except Exception as e:
@@ -636,6 +703,17 @@ async def api_emergency_freeze(request):
 
         log_audit(session["username"], "emergency_freeze", device_id, reason)
 
+        # Send emergency freeze alert
+        alert_service = get_alert_svc()
+        if alert_service:
+            asyncio.create_task(
+                alert_service.send_emergency_freeze_alert(
+                    device_id=device_id,
+                    reason=reason,
+                    activated_by=session["username"]
+                )
+            )
+
         return web.json_response({"success": True})
     except Exception as e:
         return web.json_response({"error": str(e)}, status=400)
@@ -672,6 +750,16 @@ async def api_lift_freeze(request):
     conn.close()
 
     log_audit(session["username"], "lift_freeze", device_id)
+
+    # Send freeze lifted alert
+    alert_service = get_alert_svc()
+    if alert_service:
+        asyncio.create_task(
+            alert_service.send_freeze_lifted_alert(
+                device_id=device_id,
+                lifted_by=session["username"]
+            )
+        )
 
     return web.json_response({"success": True})
 
@@ -1010,6 +1098,248 @@ async def api_top_blocked(request):
     return web.json_response({"domains": domains, "period": period})
 
 
+# ============ ALERT MANAGEMENT API ============
+
+@require_auth
+async def api_alert_status(request):
+    """Get alert system status and configuration"""
+    status = {
+        "available": ALERTS_AVAILABLE,
+        "enabled": config.alerts_enabled,
+        "email_configured": bool(config.smtp_host),
+        "webhook_configured": bool(config.alert_webhook_url),
+        "smtp_host": config.smtp_host if config.smtp_host else None,
+        "from_email": config.smtp_from_email
+    }
+
+    alert_service = get_alert_svc()
+    if alert_service:
+        status["operational"] = True
+    else:
+        status["operational"] = False
+
+    return web.json_response(status)
+
+
+@require_auth
+async def api_alert_settings(request):
+    """Get alert settings for a device"""
+    device_id = request.query.get("device_id")
+
+    alert_service = get_alert_svc()
+    if not alert_service:
+        return web.json_response({"error": "Alert service not available"}, status=400)
+
+    settings = alert_service.get_alert_settings_for_device(device_id)
+    recipients = alert_service.get_email_recipients_for_device(device_id)
+    webhooks = alert_service.get_webhooks_for_device(device_id)
+
+    # Get available alert types
+    alert_types = [
+        {"value": t.value, "label": t.value.replace("_", " ").title()}
+        for t in AlertType
+    ]
+
+    return web.json_response({
+        "settings": settings,
+        "recipients": recipients,
+        "webhooks": webhooks,
+        "alert_types": alert_types
+    })
+
+
+@require_auth
+async def api_update_alert_setting(request):
+    """Update an alert setting"""
+    session = request["session"]
+
+    try:
+        data = await request.json()
+        device_id = data.get("device_id")
+        alert_type = data.get("alert_type")
+        channel = data.get("channel")
+        enabled = data.get("enabled", True)
+        config_data = data.get("config")
+
+        if not alert_type or not channel:
+            return web.json_response({"error": "Missing required fields"}, status=400)
+
+        alert_service = get_alert_svc()
+        if not alert_service:
+            return web.json_response({"error": "Alert service not available"}, status=400)
+
+        alert_service.update_alert_setting(
+            device_id=device_id,
+            alert_type=AlertType(alert_type),
+            channel=AlertChannel(channel),
+            enabled=enabled,
+            config=config_data
+        )
+
+        log_audit(session["username"], "update_alert_setting",
+                  f"{device_id}:{alert_type}:{channel}", f"enabled={enabled}")
+
+        return web.json_response({"success": True})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
+
+
+@require_auth
+async def api_add_email_recipient(request):
+    """Add an email recipient"""
+    session = request["session"]
+
+    try:
+        data = await request.json()
+        device_id = data.get("device_id")
+        email = data.get("email", "").strip().lower()
+        name = data.get("name", "").strip()
+        is_primary = data.get("is_primary", False)
+
+        if not email:
+            return web.json_response({"error": "Email required"}, status=400)
+
+        alert_service = get_alert_svc()
+        if not alert_service:
+            return web.json_response({"error": "Alert service not available"}, status=400)
+
+        alert_service.add_email_recipient(device_id, email, name, is_primary)
+
+        log_audit(session["username"], "add_alert_recipient", device_id, f"email={email}")
+
+        return web.json_response({"success": True, "email": email})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
+
+
+@require_auth
+async def api_remove_email_recipient(request):
+    """Remove an email recipient"""
+    session = request["session"]
+
+    try:
+        data = await request.json()
+        device_id = data.get("device_id")
+        email = data.get("email", "").strip().lower()
+
+        if not email:
+            return web.json_response({"error": "Email required"}, status=400)
+
+        alert_service = get_alert_svc()
+        if not alert_service:
+            return web.json_response({"error": "Alert service not available"}, status=400)
+
+        alert_service.remove_email_recipient(device_id, email)
+
+        log_audit(session["username"], "remove_alert_recipient", device_id, f"email={email}")
+
+        return web.json_response({"success": True})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
+
+
+@require_auth
+async def api_add_webhook(request):
+    """Add a webhook"""
+    session = request["session"]
+
+    try:
+        data = await request.json()
+        device_id = data.get("device_id")
+        name = data.get("name", "").strip()
+        url = data.get("url", "").strip()
+        secret = data.get("secret", "").strip()
+
+        if not name or not url:
+            return web.json_response({"error": "Name and URL required"}, status=400)
+
+        alert_service = get_alert_svc()
+        if not alert_service:
+            return web.json_response({"error": "Alert service not available"}, status=400)
+
+        webhook_id = alert_service.add_webhook(device_id, name, url, secret or None)
+
+        log_audit(session["username"], "add_webhook", device_id, f"name={name}")
+
+        return web.json_response({"success": True, "webhook_id": webhook_id})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
+
+
+@require_auth
+async def api_remove_webhook(request):
+    """Remove a webhook"""
+    webhook_id = request.match_info["webhook_id"]
+    session = request["session"]
+
+    alert_service = get_alert_svc()
+    if not alert_service:
+        return web.json_response({"error": "Alert service not available"}, status=400)
+
+    alert_service.remove_webhook(int(webhook_id))
+
+    log_audit(session["username"], "remove_webhook", f"webhook:{webhook_id}")
+
+    return web.json_response({"success": True})
+
+
+@require_auth
+async def api_alert_history(request):
+    """Get alert history"""
+    device_id = request.query.get("device_id")
+    alert_type = request.query.get("alert_type")
+    limit = min(int(request.query.get("limit", 50)), 200)
+
+    alert_service = get_alert_svc()
+    if not alert_service:
+        return web.json_response({"error": "Alert service not available"}, status=400)
+
+    history = alert_service.get_alert_history(
+        device_id=device_id,
+        limit=limit,
+        alert_type=AlertType(alert_type) if alert_type else None
+    )
+
+    return web.json_response({"history": history})
+
+
+@require_auth
+async def api_test_alert(request):
+    """Send a test alert"""
+    session = request["session"]
+
+    try:
+        data = await request.json()
+        device_id = data.get("device_id", "test-device")
+        channel = data.get("channel", "all")
+
+        alert_service = get_alert_svc()
+        if not alert_service:
+            return web.json_response({"error": "Alert service not available"}, status=400)
+
+        # Create a test alert
+        test_alert = Alert(
+            alert_type=AlertType.BLOCK_EVENT,
+            device_id=device_id,
+            title="Test Alert",
+            message="This is a test alert from DIGIGAMI Guardian admin dashboard.",
+            details={
+                "test": True,
+                "sent_by": session["username"],
+                "channel_requested": channel
+            },
+            priority="low"
+        )
+
+        result = await alert_service.send_alert(test_alert)
+
+        log_audit(session["username"], "test_alert", device_id, f"channel={channel}")
+
+        return web.json_response({"success": True, "result": result})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
+
+
 # Serve static files
 async def serve_index(request):
     """Serve the main dashboard page"""
@@ -1060,6 +1390,16 @@ def create_app():
         ("GET", "/api/network/status", api_network_status),
         ("GET", "/api/timeline", api_timeline),
         ("GET", "/api/top-blocked", api_top_blocked),
+        # Alert management routes
+        ("GET", "/api/alerts/status", api_alert_status),
+        ("GET", "/api/alerts/settings", api_alert_settings),
+        ("POST", "/api/alerts/settings", api_update_alert_setting),
+        ("POST", "/api/alerts/recipients", api_add_email_recipient),
+        ("DELETE", "/api/alerts/recipients", api_remove_email_recipient),
+        ("POST", "/api/alerts/webhooks", api_add_webhook),
+        ("DELETE", "/api/alerts/webhooks/{webhook_id}", api_remove_webhook),
+        ("GET", "/api/alerts/history", api_alert_history),
+        ("POST", "/api/alerts/test", api_test_alert),
     ]
 
     for method, path, handler in api_routes:

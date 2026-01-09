@@ -44,6 +44,16 @@ except ImportError:
     NEXTDNS_AVAILABLE = False
     print("NextDNS integration not available (optional)")
 
+# Alert Service Integration
+try:
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'admin'))
+    from alert_service import AlertService, AlertType, get_alert_service
+    ALERTS_AVAILABLE = True
+except ImportError:
+    ALERTS_AVAILABLE = False
+    print("Alert service not available (optional)")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("digigami-network")
 
@@ -100,6 +110,14 @@ config = load_config_from_env()
 # NextDNS client instance (initialized if enabled)
 nextdns_client: Optional["NextDNSClient"] = None
 nextdns_integration: Optional["NextDNSIntegration"] = None
+
+# Alert service instance (initialized if available)
+alert_service: Optional["AlertService"] = None
+
+# Block rate tracking for high block rate detection
+_block_rate_cache: Dict[str, List[datetime]] = {}
+HIGH_BLOCK_RATE_THRESHOLD = 50  # blocks per hour
+HIGH_BLOCK_RATE_WINDOW = 3600  # 1 hour in seconds
 
 # ============ CATEGORY DEFINITIONS ============
 DOMAIN_CATEGORIES = {
@@ -410,13 +428,13 @@ class DigigamiResolver(BaseResolver):
             nextdns_result = self._check_nextdns_sync(qname)
             if nextdns_result and nextdns_result.get("blocked"):
                 logger.info(f"BLOCKED (NextDNS): {qname} for {client_ip} - {nextdns_result.get('reason')}")
-                profile_cache.log_block(
-                    device_id, qname,
-                    nextdns_result.get("category", "nextdns"),
-                    nextdns_result.get("reason", "nextdns_blocklist")
-                )
+                category = nextdns_result.get("category", "nextdns")
+                reason = nextdns_result.get("reason", "nextdns_blocklist")
+                profile_cache.log_block(device_id, qname, category, reason)
                 # Report to NextDNS analytics
                 self._report_nextdns_block(device_id, qname, nextdns_result)
+                # Trigger alert notification (async)
+                asyncio.create_task(trigger_block_alert(device_id, qname, category, reason))
                 return self._block_response(request, qname)
 
         # Categorize the domain locally
@@ -437,6 +455,11 @@ class DigigamiResolver(BaseResolver):
                 # Send push notification (async)
                 asyncio.create_task(
                     send_block_notification(device_id, qname, consent_result)
+                )
+
+                # Trigger alert notification (async)
+                asyncio.create_task(
+                    trigger_block_alert(device_id, qname, category, consent_result["reason"])
                 )
 
                 # Report to NextDNS analytics if enabled
@@ -553,7 +576,7 @@ async def send_block_notification(device_id: str, domain: str, result: dict):
             token = await get_network_token()
             if not token:
                 return
-            
+
             await session.post(
                 f"{config.cloud_api}/events/network-block",
                 headers={"Authorization": f"Bearer {token}"},
@@ -568,6 +591,79 @@ async def send_block_notification(device_id: str, domain: str, result: dict):
             )
     except Exception as e:
         logger.error(f"Notification error: {e}")
+
+
+# ============ ALERT INTEGRATION ============
+async def trigger_block_alert(device_id: str, domain: str, category: str, reason: str):
+    """Trigger alert notification for a block event"""
+    global alert_service
+
+    if not ALERTS_AVAILABLE or alert_service is None:
+        return
+
+    try:
+        # Send block alert
+        await alert_service.send_block_alert(device_id, domain, category, reason)
+
+        # Check for high block rate
+        await check_high_block_rate(device_id)
+    except Exception as e:
+        logger.debug(f"Alert trigger error: {e}")
+
+
+async def check_high_block_rate(device_id: str):
+    """Check if device has unusually high block rate and trigger alert if needed"""
+    global _block_rate_cache, alert_service
+
+    if not ALERTS_AVAILABLE or alert_service is None:
+        return
+
+    now = datetime.utcnow()
+    window_start = now - timedelta(seconds=HIGH_BLOCK_RATE_WINDOW)
+
+    # Initialize cache for device if needed
+    if device_id not in _block_rate_cache:
+        _block_rate_cache[device_id] = []
+
+    # Add current block timestamp
+    _block_rate_cache[device_id].append(now)
+
+    # Clean old entries outside the window
+    _block_rate_cache[device_id] = [
+        ts for ts in _block_rate_cache[device_id]
+        if ts > window_start
+    ]
+
+    block_count = len(_block_rate_cache[device_id])
+
+    # Check if threshold exceeded
+    if block_count == HIGH_BLOCK_RATE_THRESHOLD:
+        # Only alert when we first hit the threshold (not on every subsequent block)
+        try:
+            await alert_service.send_high_block_rate_alert(
+                device_id=device_id,
+                block_count=block_count,
+                period="1 hour"
+            )
+            logger.warning(f"High block rate alert sent for device {device_id}: {block_count} blocks/hour")
+        except Exception as e:
+            logger.debug(f"High block rate alert error: {e}")
+
+
+async def init_alert_service():
+    """Initialize the alert service"""
+    global alert_service
+
+    if not ALERTS_AVAILABLE:
+        logger.info("Alert service not available (module not found)")
+        return
+
+    try:
+        alert_service = get_alert_service(config.db_path)
+        logger.info("Alert service initialized")
+    except Exception as e:
+        logger.error(f"Alert service initialization error: {e}")
+        alert_service = None
 
 async def get_network_token() -> Optional[str]:
     """Get network authentication token"""
@@ -780,6 +876,9 @@ def main():
 
     # Start async services
     loop = asyncio.get_event_loop()
+
+    # Initialize alert service
+    loop.run_until_complete(init_alert_service())
 
     # Initialize NextDNS integration
     loop.run_until_complete(init_nextdns())

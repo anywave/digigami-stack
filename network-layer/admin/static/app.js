@@ -161,6 +161,9 @@ function showPage(pageName) {
     case 'network':
       loadNetworkStatus();
       break;
+    case 'alerts':
+      loadAlerts();
+      break;
   }
 }
 
@@ -1334,6 +1337,442 @@ function formatNumber(num) {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toString();
+}
+
+// ============ Alerts ============
+
+let alertHistoryPage = 1;
+
+async function loadAlerts() {
+  const statusBanner = document.getElementById('alerts-status-banner');
+
+  try {
+    // First check alerts status
+    const statusResponse = await fetch(`${API_BASE}/alerts/status`);
+    const status = await statusResponse.json();
+
+    if (!status.available) {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content warning">
+          <span class="icon">⚠️</span>
+          <div>
+            <strong>Alert System Not Available</strong>
+            <p>The alert module is not loaded.</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner warning';
+      return;
+    }
+
+    if (!status.enabled) {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content info">
+          <span class="icon">ℹ️</span>
+          <div>
+            <strong>Alerts Disabled</strong>
+            <p>Enable alerts by setting ALERTS_ENABLED=true in environment.</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner info';
+    } else {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content success">
+          <span class="icon">✅</span>
+          <div>
+            <strong>Alert System Active</strong>
+            <p>Email: ${status.smtp_configured ? 'Configured' : 'Not configured'} | Webhooks: ${status.webhooks_count || 0}</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner success';
+    }
+
+    // Update stats
+    document.getElementById('alert-email-count').textContent = status.recipients_count || 0;
+    document.getElementById('alert-webhook-count').textContent = status.webhooks_count || 0;
+    document.getElementById('alert-sent-today').textContent = status.sent_today || 0;
+    document.getElementById('alert-status').textContent = status.enabled ? 'Active' : 'Disabled';
+
+    // Load settings
+    await loadAlertSettings();
+
+    // Load recipients
+    await loadEmailRecipients();
+
+    // Load webhooks
+    await loadWebhooks();
+
+    // Load history
+    await loadAlertHistory();
+
+    // Show SMTP config
+    renderSMTPConfig(status);
+
+  } catch (e) {
+    console.error('Failed to load alerts:', e);
+    statusBanner.innerHTML = `
+      <div class="status-banner-content error">
+        <span class="icon">❌</span>
+        <div><strong>Error loading alert settings</strong></div>
+      </div>
+    `;
+    statusBanner.className = 'status-banner error';
+  }
+}
+
+async function loadAlertSettings() {
+  const container = document.getElementById('alert-types-settings');
+  container.innerHTML = '<div class="loading">Loading settings</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/settings`);
+    const data = await response.json();
+
+    if (data.error) {
+      container.innerHTML = `<div class="empty-state"><p>${data.error}</p></div>`;
+      return;
+    }
+
+    const alertTypes = [
+      { type: 'block_event', label: 'Block Events', description: 'When content is blocked' },
+      { type: 'bypass_requested', label: 'Bypass Requests', description: 'When a bypass is requested' },
+      { type: 'bypass_approved', label: 'Bypass Approved', description: 'When a bypass is approved' },
+      { type: 'bypass_denied', label: 'Bypass Denied', description: 'When a bypass is denied' },
+      { type: 'emergency_freeze', label: 'Emergency Freeze', description: 'When a device is frozen' },
+      { type: 'freeze_lifted', label: 'Freeze Lifted', description: 'When a freeze is lifted' },
+      { type: 'high_block_rate', label: 'High Block Rate', description: 'Unusual blocking activity detected' },
+      { type: 'daily_summary', label: 'Daily Summary', description: 'Daily activity summary' }
+    ];
+
+    container.innerHTML = `
+      <div class="alert-type-grid">
+        ${alertTypes.map(at => {
+          const setting = data.settings?.find(s => s.alert_type === at.type) || {};
+          const enabled = setting.enabled !== false;
+          return `
+            <div class="alert-type-item">
+              <div class="alert-type-info">
+                <div class="alert-type-label">${at.label}</div>
+                <div class="alert-type-desc">${at.description}</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" ${enabled ? 'checked' : ''}
+                       onchange="toggleAlertType('${at.type}', this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><p>Failed to load settings</p></div>';
+  }
+}
+
+async function toggleAlertType(alertType, enabled) {
+  try {
+    const response = await fetch(`${API_BASE}/alerts/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alert_type: alertType, enabled })
+    });
+
+    if (!response.ok) {
+      alert('Failed to update setting');
+      loadAlertSettings();
+    }
+  } catch (e) {
+    alert('Error updating setting');
+    loadAlertSettings();
+  }
+}
+
+async function loadEmailRecipients() {
+  const container = document.getElementById('email-recipients-list');
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/settings`);
+    const data = await response.json();
+
+    if (!data.recipients || data.recipients.length === 0) {
+      container.innerHTML = '<div class="empty-state small"><p>No email recipients configured</p></div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="recipients-list">
+        ${data.recipients.map(r => `
+          <div class="recipient-item">
+            <span class="recipient-email">${escapeHtml(r.email)}</span>
+            <button class="btn btn-sm btn-danger" onclick="removeEmailRecipient('${escapeHtml(r.email)}')">Remove</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state small"><p>Failed to load recipients</p></div>';
+  }
+}
+
+async function addEmailRecipient() {
+  const input = document.getElementById('new-email-recipient');
+  const email = input.value.trim();
+
+  if (!email) {
+    alert('Please enter an email address');
+    return;
+  }
+
+  // Basic email validation
+  if (!email.includes('@') || !email.includes('.')) {
+    alert('Please enter a valid email address');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/recipients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      input.value = '';
+      loadEmailRecipients();
+      loadAlerts(); // Refresh stats
+    } else {
+      alert(result.error || 'Failed to add recipient');
+    }
+  } catch (e) {
+    alert('Error adding recipient');
+  }
+}
+
+async function removeEmailRecipient(email) {
+  if (!confirm(`Remove ${email} from recipients?`)) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/recipients`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    if (response.ok) {
+      loadEmailRecipients();
+      loadAlerts(); // Refresh stats
+    } else {
+      alert('Failed to remove recipient');
+    }
+  } catch (e) {
+    alert('Error removing recipient');
+  }
+}
+
+async function loadWebhooks() {
+  const container = document.getElementById('webhooks-list');
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/settings`);
+    const data = await response.json();
+
+    if (!data.webhooks || data.webhooks.length === 0) {
+      container.innerHTML = '<div class="empty-state small"><p>No webhooks configured</p></div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="webhooks-list">
+        ${data.webhooks.map(w => `
+          <div class="webhook-item">
+            <div class="webhook-info">
+              <span class="webhook-name">${escapeHtml(w.name)}</span>
+              <span class="webhook-url">${escapeHtml(w.url.substring(0, 50))}${w.url.length > 50 ? '...' : ''}</span>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="removeWebhook(${w.id})">Remove</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state small"><p>Failed to load webhooks</p></div>';
+  }
+}
+
+async function addWebhook() {
+  const nameInput = document.getElementById('new-webhook-name');
+  const urlInput = document.getElementById('new-webhook-url');
+  const name = nameInput.value.trim();
+  const url = urlInput.value.trim();
+
+  if (!name || !url) {
+    alert('Please enter both name and URL');
+    return;
+  }
+
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    alert('Please enter a valid URL starting with http:// or https://');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/webhooks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, url })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      nameInput.value = '';
+      urlInput.value = '';
+      loadWebhooks();
+      loadAlerts(); // Refresh stats
+    } else {
+      alert(result.error || 'Failed to add webhook');
+    }
+  } catch (e) {
+    alert('Error adding webhook');
+  }
+}
+
+async function removeWebhook(webhookId) {
+  if (!confirm('Remove this webhook?')) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/webhooks/${webhookId}`, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      loadWebhooks();
+      loadAlerts(); // Refresh stats
+    } else {
+      alert('Failed to remove webhook');
+    }
+  } catch (e) {
+    alert('Error removing webhook');
+  }
+}
+
+function renderSMTPConfig(status) {
+  const container = document.getElementById('smtp-config-display');
+
+  const items = [
+    ['SMTP Host', status.smtp_host || 'Not configured'],
+    ['SMTP Port', status.smtp_port || '-'],
+    ['From Email', status.smtp_from || 'Not configured'],
+    ['Status', status.smtp_configured ? 'Configured' : 'Not configured']
+  ];
+
+  container.innerHTML = `
+    <div class="config-list">
+      ${items.map(([key, value]) => `
+        <div class="config-item">
+          <span class="config-key">${key}</span>
+          <span class="config-value">${escapeHtml(String(value))}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function sendTestAlert() {
+  const channel = document.getElementById('test-alert-channel').value;
+  const resultContainer = document.getElementById('test-alert-result');
+
+  resultContainer.innerHTML = '<div class="loading">Sending test alert...</div>';
+  resultContainer.className = 'alert-result';
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel })
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      resultContainer.innerHTML = `<div class="success">Test alert sent successfully!</div>`;
+      resultContainer.className = 'alert-result success';
+    } else {
+      resultContainer.innerHTML = `<div class="error">${result.error || 'Failed to send test alert'}</div>`;
+      resultContainer.className = 'alert-result error';
+    }
+  } catch (e) {
+    resultContainer.innerHTML = `<div class="error">Error sending test alert</div>`;
+    resultContainer.className = 'alert-result error';
+  }
+
+  // Clear result after 5 seconds
+  setTimeout(() => {
+    resultContainer.innerHTML = '';
+    resultContainer.className = 'alert-result';
+  }, 5000);
+}
+
+async function loadAlertHistory() {
+  const container = document.getElementById('alert-history-list');
+  const pagination = document.getElementById('alert-history-pagination');
+
+  container.innerHTML = '<div class="loading">Loading history</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/alerts/history?page=${alertHistoryPage}&limit=20`);
+    const data = await response.json();
+
+    if (!data.alerts || data.alerts.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No alerts sent yet</p></div>';
+      pagination.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Channel</th>
+            <th>Recipient</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.alerts.map(alert => `
+            <tr>
+              <td><code>${alert.alert_type}</code></td>
+              <td>${alert.channel}</td>
+              <td>${escapeHtml(alert.recipient || '-')}</td>
+              <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(alert.subject || '-')}</td>
+              <td><span class="cell-status ${alert.success ? 'approved' : 'denied'}">${alert.success ? 'Sent' : 'Failed'}</span></td>
+              <td class="cell-time">${formatTime(alert.sent_at)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    // Pagination
+    if (data.pages > 1) {
+      renderPagination(pagination, alertHistoryPage, data.pages, (page) => {
+        alertHistoryPage = page;
+        loadAlertHistory();
+      });
+    } else {
+      pagination.innerHTML = '';
+    }
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><p>Failed to load alert history</p></div>';
+  }
 }
 
 // Auto-refresh pending count every 30 seconds
