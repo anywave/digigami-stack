@@ -1,21 +1,34 @@
 """
 DIGIGAMI Guardian Admin Dashboard
 Web interface for managing consent settings, viewing logs, and approving bypass requests.
+Includes NextDNS analytics integration and network health monitoring.
 """
 
 import asyncio
 import json
 import sqlite3
 import os
+import aiohttp
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, asdict
 import hashlib
 import secrets
+import platform
+import psutil
 
 from aiohttp import web
 import aiohttp_cors
+
+# Try to import NextDNS client
+try:
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    from nextdns_client import NextDNSClient, NextDNSConfig
+    NEXTDNS_AVAILABLE = True
+except ImportError:
+    NEXTDNS_AVAILABLE = False
 
 # Configuration
 @dataclass
@@ -26,7 +39,34 @@ class AdminConfig:
     static_path: str = os.path.join(os.path.dirname(__file__), "static")
     session_timeout: int = 3600  # 1 hour
 
+    # NextDNS settings
+    nextdns_enabled: bool = os.environ.get("NEXTDNS_ENABLED", "false").lower() == "true"
+    nextdns_api_key: str = os.environ.get("NEXTDNS_API_KEY", "")
+    nextdns_profile_id: str = os.environ.get("NEXTDNS_PROFILE_ID", "")
+
 config = AdminConfig()
+
+# NextDNS client (initialized lazily)
+_nextdns_client: Optional[NextDNSClient] = None
+
+async def get_nextdns_client() -> Optional[NextDNSClient]:
+    """Get or create NextDNS client"""
+    global _nextdns_client
+
+    if not NEXTDNS_AVAILABLE or not config.nextdns_enabled:
+        return None
+
+    if not config.nextdns_api_key or not config.nextdns_profile_id:
+        return None
+
+    if _nextdns_client is None:
+        nextdns_config = NextDNSConfig(
+            api_key=config.nextdns_api_key,
+            profile_id=config.nextdns_profile_id
+        )
+        _nextdns_client = NextDNSClient(nextdns_config)
+
+    return _nextdns_client
 
 # Session management
 sessions: Dict[str, dict] = {}
@@ -654,6 +694,322 @@ async def api_categories(request):
 
     return web.json_response({"categories": categories})
 
+
+# ============ NEXTDNS ANALYTICS API ============
+
+@require_auth
+async def api_nextdns_status(request):
+    """Get NextDNS integration status and profile info"""
+    status = {
+        "available": NEXTDNS_AVAILABLE,
+        "enabled": config.nextdns_enabled,
+        "configured": bool(config.nextdns_api_key and config.nextdns_profile_id),
+        "profile_id": config.nextdns_profile_id if config.nextdns_enabled else None,
+        "profile": None
+    }
+
+    if status["configured"]:
+        try:
+            client = await get_nextdns_client()
+            if client:
+                profile = await client.get_profile()
+                if profile:
+                    status["profile"] = {
+                        "id": profile.get("id"),
+                        "name": profile.get("name"),
+                        "fingerprint": profile.get("fingerprint")
+                    }
+                    status["connected"] = True
+                else:
+                    status["connected"] = False
+        except Exception as e:
+            status["error"] = str(e)
+            status["connected"] = False
+
+    return web.json_response(status)
+
+
+@require_auth
+async def api_nextdns_analytics(request):
+    """Get NextDNS analytics data"""
+    period = request.query.get("period", "24h")
+
+    if not config.nextdns_enabled:
+        return web.json_response({"error": "NextDNS not enabled"}, status=400)
+
+    try:
+        client = await get_nextdns_client()
+        if not client:
+            return web.json_response({"error": "NextDNS client not available"}, status=500)
+
+        analytics = await client.get_analytics(period)
+
+        return web.json_response({
+            "period": period,
+            "queries_total": analytics.queries_total,
+            "queries_blocked": analytics.queries_blocked,
+            "queries_allowed": analytics.queries_allowed,
+            "block_rate": round(
+                (analytics.queries_blocked / analytics.queries_total * 100)
+                if analytics.queries_total > 0 else 0, 1
+            ),
+            "top_blocked_domains": analytics.top_blocked_domains[:10],
+            "top_allowed_domains": analytics.top_allowed_domains[:10],
+            "device_breakdown": analytics.device_breakdown
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@require_auth
+async def api_nextdns_blocklists(request):
+    """Get NextDNS blocklists status"""
+    if not config.nextdns_enabled:
+        return web.json_response({"error": "NextDNS not enabled"}, status=400)
+
+    try:
+        client = await get_nextdns_client()
+        if not client:
+            return web.json_response({"error": "NextDNS client not available"}, status=500)
+
+        blocklists = await client.get_available_blocklists()
+
+        return web.json_response({
+            "blocklists": [
+                {
+                    "id": bl.id,
+                    "name": bl.name,
+                    "description": bl.description,
+                    "entries": bl.entries,
+                    "enabled": bl.enabled
+                }
+                for bl in blocklists
+            ]
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@require_auth
+async def api_nextdns_parental(request):
+    """Get NextDNS parental control settings"""
+    if not config.nextdns_enabled:
+        return web.json_response({"error": "NextDNS not enabled"}, status=400)
+
+    try:
+        client = await get_nextdns_client()
+        if not client:
+            return web.json_response({"error": "NextDNS client not available"}, status=500)
+
+        settings = await client.get_parental_settings()
+        return web.json_response(settings)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@require_auth
+async def api_nextdns_security(request):
+    """Get NextDNS security settings"""
+    if not config.nextdns_enabled:
+        return web.json_response({"error": "NextDNS not enabled"}, status=400)
+
+    try:
+        client = await get_nextdns_client()
+        if not client:
+            return web.json_response({"error": "NextDNS client not available"}, status=500)
+
+        settings = await client.get_security_settings()
+        return web.json_response(settings)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@require_auth
+async def api_nextdns_add_denylist(request):
+    """Add domain to NextDNS denylist"""
+    if not config.nextdns_enabled:
+        return web.json_response({"error": "NextDNS not enabled"}, status=400)
+
+    try:
+        data = await request.json()
+        domain = data.get("domain", "").strip().lower()
+
+        if not domain:
+            return web.json_response({"error": "Domain required"}, status=400)
+
+        client = await get_nextdns_client()
+        if not client:
+            return web.json_response({"error": "NextDNS client not available"}, status=500)
+
+        success = await client.add_to_denylist(domain)
+
+        if success:
+            session = request["session"]
+            log_audit(session["username"], "nextdns_denylist_add", domain)
+            return web.json_response({"success": True, "domain": domain})
+        else:
+            return web.json_response({"error": "Failed to add domain"}, status=500)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@require_auth
+async def api_nextdns_remove_denylist(request):
+    """Remove domain from NextDNS denylist"""
+    domain = request.match_info["domain"]
+
+    if not config.nextdns_enabled:
+        return web.json_response({"error": "NextDNS not enabled"}, status=400)
+
+    try:
+        client = await get_nextdns_client()
+        if not client:
+            return web.json_response({"error": "NextDNS client not available"}, status=500)
+
+        success = await client.remove_from_denylist(domain)
+
+        if success:
+            session = request["session"]
+            log_audit(session["username"], "nextdns_denylist_remove", domain)
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"error": "Failed to remove domain"}, status=500)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+# ============ NETWORK STATUS API ============
+
+@require_auth
+async def api_network_status(request):
+    """Get network and system health status"""
+    status = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "system": {
+            "platform": platform.system(),
+            "hostname": platform.node(),
+            "python_version": platform.python_version()
+        },
+        "guardian": {
+            "db_path": config.db_path,
+            "db_exists": Path(config.db_path).exists()
+        },
+        "nextdns": {
+            "available": NEXTDNS_AVAILABLE,
+            "enabled": config.nextdns_enabled,
+            "connected": False
+        }
+    }
+
+    # Get system resources if psutil available
+    try:
+        status["system"]["cpu_percent"] = psutil.cpu_percent(interval=0.1)
+        status["system"]["memory_percent"] = psutil.virtual_memory().percent
+        status["system"]["disk_percent"] = psutil.disk_usage("/").percent
+    except Exception:
+        pass
+
+    # Check NextDNS connection
+    if config.nextdns_enabled:
+        try:
+            client = await get_nextdns_client()
+            if client:
+                profile = await client.get_profile()
+                status["nextdns"]["connected"] = profile is not None
+                if profile:
+                    status["nextdns"]["profile_name"] = profile.get("name")
+        except Exception as e:
+            status["nextdns"]["error"] = str(e)
+
+    # Get database stats
+    try:
+        conn = get_db()
+
+        # Total blocks
+        cursor = conn.execute("SELECT COUNT(*) as count FROM block_log")
+        status["guardian"]["total_blocks"] = cursor.fetchone()["count"]
+
+        # Total profiles
+        cursor = conn.execute("SELECT COUNT(*) as count FROM profiles")
+        status["guardian"]["total_profiles"] = cursor.fetchone()["count"]
+
+        # Active bypasses
+        cursor = conn.execute(
+            "SELECT COUNT(*) as count FROM active_bypasses WHERE expires_at > datetime('now')"
+        )
+        status["guardian"]["active_bypasses"] = cursor.fetchone()["count"]
+
+        conn.close()
+    except Exception as e:
+        status["guardian"]["db_error"] = str(e)
+
+    return web.json_response(status)
+
+
+@require_auth
+async def api_timeline(request):
+    """Get block activity timeline (hourly breakdown)"""
+    hours = int(request.query.get("hours", 24))
+    hours = min(hours, 168)  # Max 7 days
+
+    conn = get_db()
+
+    # Get hourly block counts
+    cursor = conn.execute("""
+        SELECT
+            strftime('%Y-%m-%d %H:00', timestamp) as hour,
+            COUNT(*) as count,
+            COUNT(DISTINCT device_id) as devices
+        FROM block_log
+        WHERE timestamp >= datetime('now', ? || ' hours')
+        GROUP BY hour
+        ORDER BY hour ASC
+    """, (f"-{hours}",))
+
+    timeline = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    return web.json_response({"timeline": timeline, "hours": hours})
+
+
+@require_auth
+async def api_top_blocked(request):
+    """Get top blocked domains"""
+    limit = min(int(request.query.get("limit", 20)), 100)
+    period = request.query.get("period", "24h")
+
+    # Parse period
+    if period == "1h":
+        time_filter = "-1 hours"
+    elif period == "7d":
+        time_filter = "-7 days"
+    elif period == "30d":
+        time_filter = "-30 days"
+    else:
+        time_filter = "-24 hours"
+
+    conn = get_db()
+
+    cursor = conn.execute("""
+        SELECT
+            domain,
+            category,
+            COUNT(*) as count,
+            COUNT(DISTINCT device_id) as devices,
+            MAX(timestamp) as last_blocked
+        FROM block_log
+        WHERE timestamp >= datetime('now', ?)
+        GROUP BY domain
+        ORDER BY count DESC
+        LIMIT ?
+    """, (time_filter, limit))
+
+    domains = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    return web.json_response({"domains": domains, "period": period})
+
+
 # Serve static files
 async def serve_index(request):
     """Serve the main dashboard page"""
@@ -692,6 +1048,18 @@ def create_app():
         ("POST", "/api/devices/{device_id}/freeze", api_emergency_freeze),
         ("POST", "/api/devices/{device_id}/unfreeze", api_lift_freeze),
         ("GET", "/api/categories", api_categories),
+        # NextDNS integration routes
+        ("GET", "/api/nextdns/status", api_nextdns_status),
+        ("GET", "/api/nextdns/analytics", api_nextdns_analytics),
+        ("GET", "/api/nextdns/blocklists", api_nextdns_blocklists),
+        ("GET", "/api/nextdns/parental", api_nextdns_parental),
+        ("GET", "/api/nextdns/security", api_nextdns_security),
+        ("POST", "/api/nextdns/denylist", api_nextdns_add_denylist),
+        ("DELETE", "/api/nextdns/denylist/{domain}", api_nextdns_remove_denylist),
+        # Network status routes
+        ("GET", "/api/network/status", api_network_status),
+        ("GET", "/api/timeline", api_timeline),
+        ("GET", "/api/top-blocked", api_top_blocked),
     ]
 
     for method, path, handler in api_routes:

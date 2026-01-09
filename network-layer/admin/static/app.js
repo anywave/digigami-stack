@@ -155,6 +155,12 @@ function showPage(pageName) {
     case 'audit':
       loadAuditLog();
       break;
+    case 'nextdns':
+      loadNextDNSAnalytics();
+      break;
+    case 'network':
+      loadNetworkStatus();
+      break;
   }
 }
 
@@ -889,6 +895,445 @@ function formatTime(timestamp) {
 
   // Otherwise show date
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// ============ NextDNS Analytics ============
+
+async function loadNextDNSAnalytics() {
+  const statusBanner = document.getElementById('nextdns-status-banner');
+  const statsGrid = document.getElementById('nextdns-stats');
+  const period = document.getElementById('nextdns-period').value;
+
+  // First check NextDNS status
+  try {
+    const statusResponse = await fetch(`${API_BASE}/nextdns/status`);
+    const status = await statusResponse.json();
+
+    if (!status.available) {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content warning">
+          <span class="icon">⚠️</span>
+          <div>
+            <strong>NextDNS Module Not Available</strong>
+            <p>The NextDNS client library is not installed.</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner warning';
+      statsGrid.classList.add('hidden');
+      return;
+    }
+
+    if (!status.enabled) {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content info">
+          <span class="icon">ℹ️</span>
+          <div>
+            <strong>NextDNS Integration Disabled</strong>
+            <p>Enable NextDNS by setting NEXTDNS_ENABLED=true in environment.</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner info';
+      statsGrid.classList.add('hidden');
+      return;
+    }
+
+    if (!status.configured) {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content warning">
+          <span class="icon">⚙️</span>
+          <div>
+            <strong>NextDNS Not Configured</strong>
+            <p>Set NEXTDNS_API_KEY and NEXTDNS_PROFILE_ID environment variables.</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner warning';
+      statsGrid.classList.add('hidden');
+      return;
+    }
+
+    if (status.connected && status.profile) {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content success">
+          <span class="icon">✅</span>
+          <div>
+            <strong>Connected to NextDNS</strong>
+            <p>Profile: ${escapeHtml(status.profile.name)} (${status.profile.id})</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner success';
+      statsGrid.classList.remove('hidden');
+    } else {
+      statusBanner.innerHTML = `
+        <div class="status-banner-content error">
+          <span class="icon">❌</span>
+          <div>
+            <strong>Connection Failed</strong>
+            <p>${status.error || 'Unable to connect to NextDNS API'}</p>
+          </div>
+        </div>
+      `;
+      statusBanner.className = 'status-banner error';
+      statsGrid.classList.add('hidden');
+      return;
+    }
+  } catch (e) {
+    statusBanner.innerHTML = `
+      <div class="status-banner-content error">
+        <span class="icon">❌</span>
+        <div><strong>Error checking NextDNS status</strong></div>
+      </div>
+    `;
+    statusBanner.className = 'status-banner error';
+    return;
+  }
+
+  // Load analytics data
+  try {
+    const analyticsResponse = await fetch(`${API_BASE}/nextdns/analytics?period=${period}`);
+    const analytics = await analyticsResponse.json();
+
+    if (analytics.error) {
+      console.error('Analytics error:', analytics.error);
+    } else {
+      document.getElementById('nextdns-total-queries').textContent = formatNumber(analytics.queries_total);
+      document.getElementById('nextdns-blocked').textContent = formatNumber(analytics.queries_blocked);
+      document.getElementById('nextdns-allowed').textContent = formatNumber(analytics.queries_allowed);
+      document.getElementById('nextdns-block-rate').textContent = `${analytics.block_rate}%`;
+
+      // Render top blocked domains
+      const topBlockedContainer = document.getElementById('nextdns-top-blocked');
+      if (analytics.top_blocked_domains && analytics.top_blocked_domains.length > 0) {
+        topBlockedContainer.innerHTML = `
+          <table>
+            <thead><tr><th>Domain</th><th>Count</th></tr></thead>
+            <tbody>
+              ${analytics.top_blocked_domains.map(d => `
+                <tr>
+                  <td class="cell-domain">${escapeHtml(d.domain || d.name || d)}</td>
+                  <td>${d.count || d.queries || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        topBlockedContainer.innerHTML = '<div class="empty-state"><p>No blocked domains</p></div>';
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load analytics:', e);
+  }
+
+  // Load blocklists
+  loadNextDNSBlocklists();
+
+  // Load parental controls
+  loadNextDNSParental();
+
+  // Load security settings
+  loadNextDNSSecurity();
+}
+
+async function loadNextDNSBlocklists() {
+  const container = document.getElementById('nextdns-blocklists');
+  container.innerHTML = '<div class="loading">Loading blocklists</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/nextdns/blocklists`);
+    const data = await response.json();
+
+    if (data.error) {
+      container.innerHTML = `<div class="empty-state"><p>${data.error}</p></div>`;
+      return;
+    }
+
+    if (!data.blocklists || data.blocklists.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No blocklists configured</p></div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="blocklist-grid">
+        ${data.blocklists.filter(bl => bl.enabled).map(bl => `
+          <div class="blocklist-item ${bl.enabled ? 'enabled' : 'disabled'}">
+            <div class="blocklist-name">${escapeHtml(bl.name)}</div>
+            <div class="blocklist-meta">${formatNumber(bl.entries)} entries</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><p>Failed to load blocklists</p></div>';
+  }
+}
+
+async function loadNextDNSParental() {
+  const container = document.getElementById('nextdns-parental');
+  container.innerHTML = '<div class="loading">Loading</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/nextdns/parental`);
+    const settings = await response.json();
+
+    if (settings.error) {
+      container.innerHTML = `<div class="empty-state"><p>${settings.error}</p></div>`;
+      return;
+    }
+
+    const items = [];
+    if (settings.safeSearch) items.push(['Safe Search', settings.safeSearch ? 'Enabled' : 'Disabled']);
+    if (settings.youtubeRestrictedMode !== undefined) items.push(['YouTube Restricted', settings.youtubeRestrictedMode ? 'Yes' : 'No']);
+    if (settings.blockBypass !== undefined) items.push(['Block Bypass Methods', settings.blockBypass ? 'Yes' : 'No']);
+    if (settings.services && settings.services.length > 0) items.push(['Blocked Services', settings.services.join(', ')]);
+    if (settings.categories && settings.categories.length > 0) items.push(['Blocked Categories', settings.categories.join(', ')]);
+
+    if (items.length === 0) {
+      container.innerHTML = '<div class="settings-list"><p class="muted">No parental controls configured</p></div>';
+    } else {
+      container.innerHTML = `
+        <div class="settings-list">
+          ${items.map(([key, value]) => `
+            <div class="settings-item">
+              <span class="settings-key">${key}</span>
+              <span class="settings-value">${escapeHtml(String(value))}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><p>Failed to load settings</p></div>';
+  }
+}
+
+async function loadNextDNSSecurity() {
+  const container = document.getElementById('nextdns-security');
+  container.innerHTML = '<div class="loading">Loading</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/nextdns/security`);
+    const settings = await response.json();
+
+    if (settings.error) {
+      container.innerHTML = `<div class="empty-state"><p>${settings.error}</p></div>`;
+      return;
+    }
+
+    const items = [];
+    if (settings.threatIntelligenceFeeds !== undefined) items.push(['Threat Intelligence', settings.threatIntelligenceFeeds ? 'Enabled' : 'Disabled']);
+    if (settings.aiThreatDetection !== undefined) items.push(['AI Threat Detection', settings.aiThreatDetection ? 'Enabled' : 'Disabled']);
+    if (settings.googleSafeBrowsing !== undefined) items.push(['Google Safe Browsing', settings.googleSafeBrowsing ? 'Enabled' : 'Disabled']);
+    if (settings.cryptojacking !== undefined) items.push(['Block Cryptojacking', settings.cryptojacking ? 'Yes' : 'No']);
+    if (settings.dnsRebinding !== undefined) items.push(['DNS Rebinding Protection', settings.dnsRebinding ? 'Yes' : 'No']);
+    if (settings.idnHomographs !== undefined) items.push(['IDN Homograph Protection', settings.idnHomographs ? 'Yes' : 'No']);
+    if (settings.typosquatting !== undefined) items.push(['Typosquatting Protection', settings.typosquatting ? 'Yes' : 'No']);
+    if (settings.dga !== undefined) items.push(['DGA Protection', settings.dga ? 'Yes' : 'No']);
+    if (settings.nrd !== undefined) items.push(['Block New Domains', settings.nrd ? 'Yes' : 'No']);
+
+    if (items.length === 0) {
+      container.innerHTML = '<div class="settings-list"><p class="muted">No security settings configured</p></div>';
+    } else {
+      container.innerHTML = `
+        <div class="settings-list">
+          ${items.map(([key, value]) => `
+            <div class="settings-item">
+              <span class="settings-key">${key}</span>
+              <span class="settings-value">${escapeHtml(String(value))}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><p>Failed to load settings</p></div>';
+  }
+}
+
+async function addToDenylist() {
+  const input = document.getElementById('denylist-domain');
+  const domain = input.value.trim().toLowerCase();
+
+  if (!domain) {
+    alert('Please enter a domain');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/nextdns/denylist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      input.value = '';
+      alert(`Domain ${domain} added to denylist`);
+      loadNextDNSAnalytics();
+    } else {
+      alert(result.error || 'Failed to add domain');
+    }
+  } catch (e) {
+    alert('Error adding domain to denylist');
+  }
+}
+
+// ============ Network Status ============
+
+async function loadNetworkStatus() {
+  try {
+    const response = await fetch(`${API_BASE}/network/status`);
+    const status = await response.json();
+
+    // Update system stats
+    if (status.system) {
+      document.getElementById('net-cpu').textContent = status.system.cpu_percent !== undefined ? `${status.system.cpu_percent}%` : 'N/A';
+      document.getElementById('net-memory').textContent = status.system.memory_percent !== undefined ? `${status.system.memory_percent}%` : 'N/A';
+      document.getElementById('net-disk').textContent = status.system.disk_percent !== undefined ? `${status.system.disk_percent}%` : 'N/A';
+    }
+
+    // Update NextDNS status
+    const nextdnsCard = document.getElementById('net-nextdns-card');
+    if (status.nextdns) {
+      if (status.nextdns.connected) {
+        document.getElementById('net-nextdns-status').textContent = 'Connected';
+        nextdnsCard.classList.add('success');
+        nextdnsCard.classList.remove('error');
+      } else if (status.nextdns.enabled) {
+        document.getElementById('net-nextdns-status').textContent = 'Disconnected';
+        nextdnsCard.classList.add('error');
+        nextdnsCard.classList.remove('success');
+      } else {
+        document.getElementById('net-nextdns-status').textContent = 'Disabled';
+        nextdnsCard.classList.remove('success', 'error');
+      }
+    }
+
+    // Render system info
+    const systemInfo = document.getElementById('system-info');
+    const infoItems = [];
+    if (status.system) {
+      infoItems.push(['Platform', status.system.platform]);
+      infoItems.push(['Hostname', status.system.hostname]);
+      infoItems.push(['Python', status.system.python_version]);
+    }
+    if (status.guardian) {
+      infoItems.push(['Database', status.guardian.db_exists ? 'Connected' : 'Not Found']);
+      infoItems.push(['Total Blocks', formatNumber(status.guardian.total_blocks || 0)]);
+      infoItems.push(['Profiles', status.guardian.total_profiles || 0]);
+      infoItems.push(['Active Bypasses', status.guardian.active_bypasses || 0]);
+    }
+
+    systemInfo.innerHTML = `
+      <div class="info-list">
+        ${infoItems.map(([key, value]) => `
+          <div class="info-item">
+            <span class="info-key">${key}</span>
+            <span class="info-value">${escapeHtml(String(value))}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // Load timeline
+    loadBlockTimeline();
+
+    // Load top blocked
+    loadTopBlocked();
+  } catch (e) {
+    console.error('Failed to load network status:', e);
+  }
+}
+
+async function loadBlockTimeline() {
+  const container = document.getElementById('block-timeline');
+  container.innerHTML = '<div class="loading">Loading timeline</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/timeline?hours=24`);
+    const data = await response.json();
+
+    if (!data.timeline || data.timeline.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No activity in the last 24 hours</p></div>';
+      return;
+    }
+
+    const maxCount = Math.max(...data.timeline.map(t => t.count), 1);
+
+    container.innerHTML = `
+      <div class="timeline-chart">
+        ${data.timeline.map(point => {
+          const hour = point.hour.split(' ')[1] || point.hour;
+          const height = (point.count / maxCount) * 100;
+          return `
+            <div class="timeline-bar" title="${point.hour}: ${point.count} blocks">
+              <div class="timeline-bar-fill" style="height: ${height}%"></div>
+              <div class="timeline-bar-label">${hour.substring(0, 2)}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><p>Failed to load timeline</p></div>';
+  }
+}
+
+async function loadTopBlocked() {
+  const container = document.getElementById('top-blocked-list');
+  const period = document.getElementById('top-blocked-period').value;
+
+  container.innerHTML = '<div class="loading">Loading</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/top-blocked?period=${period}&limit=20`);
+    const data = await response.json();
+
+    if (!data.domains || data.domains.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No blocked domains in this period</p></div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>Category</th>
+            <th>Blocks</th>
+            <th>Devices</th>
+            <th>Last Blocked</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.domains.map(d => `
+            <tr>
+              <td class="cell-domain">${escapeHtml(d.domain)}</td>
+              <td><span class="cell-category ${d.category}">${d.category || '-'}</span></td>
+              <td>${formatNumber(d.count)}</td>
+              <td>${d.devices || 1}</td>
+              <td class="cell-time">${formatTime(d.last_blocked)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><p>Failed to load data</p></div>';
+  }
+}
+
+// Number formatting helper
+function formatNumber(num) {
+  if (num === undefined || num === null) return '-';
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toString();
 }
 
 // Auto-refresh pending count every 30 seconds

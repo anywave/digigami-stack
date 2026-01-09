@@ -66,6 +66,15 @@
             <span class="icon">📝</span>
             <span>Audit Log</span>
           </a>
+          <div class="nav-divider"></div>
+          <a href="#" class="nav-item" data-page="nextdns">
+            <span class="icon">🌐</span>
+            <span>NextDNS</span>
+          </a>
+          <a href="#" class="nav-item" data-page="network">
+            <span class="icon">💻</span>
+            <span>Network Status</span>
+          </a>
         </nav>
         <div class="sidebar-footer">
           <button id="logout-btn" class="btn btn-secondary btn-full">Sign Out</button>
@@ -194,6 +203,150 @@
           <div class="card">
             <div id="audit-list" class="table-container"></div>
             <div id="audit-pagination" class="pagination"></div>
+          </div>
+        </section>
+
+        <!-- NextDNS Analytics Page -->
+        <section id="page-nextdns" class="page hidden">
+          <header class="page-header">
+            <h2>NextDNS Analytics</h2>
+            <div class="header-actions">
+              <select id="nextdns-period" class="select" onchange="loadNextDNSAnalytics()">
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+              </select>
+              <button class="btn btn-secondary" onclick="loadNextDNSAnalytics()">↻ Refresh</button>
+            </div>
+          </header>
+
+          <!-- NextDNS Status Banner -->
+          <div id="nextdns-status-banner" class="status-banner"></div>
+
+          <!-- Analytics Stats -->
+          <div id="nextdns-stats" class="stats-grid hidden">
+            <div class="stat-card">
+              <div class="stat-icon">📊</div>
+              <div class="stat-content">
+                <div class="stat-value" id="nextdns-total-queries">-</div>
+                <div class="stat-label">Total Queries</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🚫</div>
+              <div class="stat-content">
+                <div class="stat-value" id="nextdns-blocked">-</div>
+                <div class="stat-label">Blocked</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">✅</div>
+              <div class="stat-content">
+                <div class="stat-value" id="nextdns-allowed">-</div>
+                <div class="stat-label">Allowed</div>
+              </div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-icon">📈</div>
+              <div class="stat-content">
+                <div class="stat-value" id="nextdns-block-rate">-</div>
+                <div class="stat-label">Block Rate</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="nextdns-content" class="dashboard-grid">
+            <div class="card">
+              <h3>Top Blocked Domains</h3>
+              <div id="nextdns-top-blocked" class="table-container"></div>
+            </div>
+            <div class="card">
+              <h3>Active Blocklists</h3>
+              <div id="nextdns-blocklists" class="list-container"></div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card">
+              <h3>Parental Controls</h3>
+              <div id="nextdns-parental" class="settings-container"></div>
+            </div>
+            <div class="card">
+              <h3>Security Settings</h3>
+              <div id="nextdns-security" class="settings-container"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Custom Denylist</h3>
+            <div class="denylist-controls">
+              <input type="text" id="denylist-domain" placeholder="Enter domain to block" class="input">
+              <button class="btn btn-danger" onclick="addToDenylist()">Block Domain</button>
+            </div>
+            <div id="nextdns-denylist" class="list-container"></div>
+          </div>
+        </section>
+
+        <!-- Network Status Page -->
+        <section id="page-network" class="page hidden">
+          <header class="page-header">
+            <h2>Network Status</h2>
+            <button class="btn btn-secondary" onclick="loadNetworkStatus()">↻ Refresh</button>
+          </header>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">💻</div>
+              <div class="stat-content">
+                <div class="stat-value" id="net-cpu">-</div>
+                <div class="stat-label">CPU Usage</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🧠</div>
+              <div class="stat-content">
+                <div class="stat-value" id="net-memory">-</div>
+                <div class="stat-label">Memory Usage</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">💾</div>
+              <div class="stat-content">
+                <div class="stat-value" id="net-disk">-</div>
+                <div class="stat-label">Disk Usage</div>
+              </div>
+            </div>
+            <div class="stat-card" id="net-nextdns-card">
+              <div class="stat-icon">🌐</div>
+              <div class="stat-content">
+                <div class="stat-value" id="net-nextdns-status">-</div>
+                <div class="stat-label">NextDNS</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card">
+              <h3>Block Activity Timeline</h3>
+              <div id="block-timeline" class="chart-container"></div>
+            </div>
+            <div class="card">
+              <h3>System Info</h3>
+              <div id="system-info" class="info-container"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Top Blocked Domains</h3>
+            <div class="header-actions inline">
+              <select id="top-blocked-period" class="select" onchange="loadTopBlocked()">
+                <option value="1h">Last Hour</option>
+                <option value="24h" selected>Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+              </select>
+            </div>
+            <div id="top-blocked-list" class="table-container"></div>
           </div>
         </section>
 
