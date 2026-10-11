@@ -1,6 +1,8 @@
 # DIGIGAMI Deployment Stack
 
-## Complete Multi-Layer Consent Infrastructure
+## Multi-Layer Consent Infrastructure (prototype)
+
+**Status: prototype. The extension and DNS layer are development builds; the DIGIGAMI cloud service (`api.digigami.ai`) and the DIGIGAMI Browser are not built. Nothing here is a released product.**
 
 Three coordinated deployment layers for consent-aware browsing protection:
 
@@ -22,7 +24,7 @@ Three coordinated deployment layers for consent-aware browsing protection:
 │        │                   │ │                   │ │                   │       │
 │        │ • Chrome/Firefox  │ │ • Router DNS      │ │ • Gecko Fork      │       │
 │        │ • Easy install    │ │ • Pi-hole         │ │ • Native consent  │       │
-│        │ • User-disablable │ │ • All devices     │ │ • Cannot bypass   │       │
+│        │ • User-disablable │ │ • All devices     │ │ • (planned)       │       │
 │        └───────────────────┘ └───────────────────┘ └───────────────────┘       │
 │                                                                                  │
 │                         DEFENSE IN DEPTH                                        │
@@ -80,7 +82,7 @@ digigami-stack/
 |---------|-----------|---------|---------|
 | Installation | Easy (store) | Moderate (router) | Easy (download) |
 | Coverage | Single browser | All devices | Single browser |
-| Bypassable | Yes (disable) | Harder (switch network) | No |
+| Bypassable | Yes (disable) | Harder (switch network) | Harder (design goal; not built) |
 | Best for | Adults self-regulating | Families, enterprise | Full sovereignty |
 
 ## Quick Start
@@ -136,7 +138,7 @@ User → Browser → DNS Query → GUARDIAN DNS → BLOCKED
                             Block page served
                             Push notification sent
 ```
-Site never loads. Most secure.
+Site does not resolve through Guardian DNS.
 
 **Network Bypassed (cellular), Extension Active:**
 ```
@@ -161,9 +163,8 @@ Defense in depth catches bypass attempts.
 User → URL bar → Consent Layer → BLOCKED
                        ↓
                 Native block UI
-                Cannot be bypassed
 ```
-Full sovereignty, deepest integration.
+Planned: deepest integration (browser not built yet).
 
 ## State Synchronization
 
@@ -185,17 +186,6 @@ All layers share consent state via SPIRAL protocol:
   }
 }
 ```
-
-## Firefox Refugee Opportunity
-
-With Mozilla's recent controversial changes, DIGIGAMI Browser positions as the privacy-first alternative:
-
-- **Firefox's direction**: Corporate priorities, user trust eroding
-- **DIGIGAMI Browser**: User sovereignty, consent as native feature
-- **Target audience**: Privacy advocates, families, self-regulators
-
-Key messaging:
-> "You chose Firefox because you believed in a user-first web. DIGIGAMI Browser continues that mission - with consent as a native feature."
 
 ## Development Roadmap
 
@@ -223,8 +213,8 @@ Key messaging:
 - [x] Docker deployment (Dockerfile + docker-compose)
 - [x] Configuration templates
 - [x] Pi-hole integration guide
-- [ ] NextDNS partnership API
-- [ ] Admin dashboard
+- [x] NextDNS API client (`nextdns_client.py`, uses NextDNS's public API; no partnership)
+- [x] Admin dashboard prototype (`network-layer/admin/`)
 
 ### Phase 3: DIGIGAMI Browser (Future)
 - [x] Specification document
@@ -234,24 +224,34 @@ Key messaging:
 - [ ] Native age verification API
 - [ ] Biometric integration
 
-## Privacy Guarantees
+## Privacy Design
+
+Design intent, not an audited guarantee:
 
 ```
-WHAT IS STORED:              WHAT IS NEVER STORED:
-═══════════════              ════════════════════
-✓ Consent state (computed)   ✗ Browsing history
-✓ Age bracket (not date)     ✗ Exact birthdate
-✓ Category blocks            ✗ Specific URLs visited
-✓ Coherence level            ✗ Raw biometric data
+SENT TO THE CLOUD (when signed in):   NOT SENT BY THE EXTENSION:
+═══════════════════════════════════   ═════════════════════════
+✓ Consent state (computed)            ✗ Full browsing history
+✓ Age bracket (not date)              ✗ Exact birthdate
+✓ Hostname of each BLOCKED site,      ✗ Full URLs (path, query)
+  with category and time              ✗ Raw biometric data
+✓ Exception requests (hostname)
 ```
+
+Witness Mode evidence (recordings, hash chain) stays in local extension
+storage unless the user exports it. The cloud endpoints are not deployed yet.
 
 ## Contributing
 
 See individual layer READMEs for contribution guidelines.
 
+## Security
+
+See [`SECURITY.md`](SECURITY.md).
+
 ## License
 
-- Extension: MIT
-- Network Layer: MIT
-- Browser: MPL 2.0 (matching Gecko)
+- Extension: MIT (see [`LICENSE`](LICENSE))
+- Network Layer: MIT (see [`LICENSE`](LICENSE))
+- Browser: MPL 2.0 (matching Gecko) - specification only; no browser code yet
 - Documentation: CC BY 4.0

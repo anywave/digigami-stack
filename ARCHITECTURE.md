@@ -242,7 +242,9 @@ All layers share consent state via SPIRAL protocol:
 
 ---
 
-## Privacy Guarantees
+## Privacy Design (target)
+
+Design target, not an audited guarantee. The current extension sends the hostname of each blocked site and of exception requests to the cloud API when signed in (see `extension/background.js`). The zero-knowledge age check below is not implemented.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
