@@ -255,3 +255,9 @@ See [`SECURITY.md`](SECURITY.md).
 - Network Layer: MIT (see [`LICENSE`](LICENSE))
 - Browser: MPL 2.0 (matching Gecko) - specification only; no browser code yet
 - Documentation: CC BY 4.0
+
+## Hedera day-1 testnet tooling
+
+The shared Node SDK layer, guarded smoke scripts, fake tests, and operational limits
+are in [`packages/hedera-day1`](packages/hedera-day1/README.md). Product wiring stays
+behind its existing valves; see the validation record in `docs/codex/HEDERA-DAY1-JS.md`.
