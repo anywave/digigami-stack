@@ -4,7 +4,7 @@ import { configuration, HederaLayer, parseMirrorMessage, retry } from '../src/in
 
 const config = () => configuration({HEDERA_MIRROR_ATTEMPTS: '2', HEDERA_RETRY_DELAY_MS: '1'});
 function fixture(overrides = {}) {
-  const calls = {prepare: [], execute: [], receipt: [], mirror: []};
+  const calls = {prepare: [], execute: [], receipt: [], mirror: [], policy: []};
   const adapter = {
     operatorId: '0.0.123', publicKeyHex: 'public-key-fixture',
     prepare(kind, fields, fee) { const tx = {kind, fields, fee}; calls.prepare.push(tx); return tx; },
@@ -16,6 +16,7 @@ function fixture(overrides = {}) {
         payer_account_id: '0.0.123', message: Buffer.from('record').toString('base64'), consensus_timestamp: '1.1'};
       return {topic_id: '0.0.456', memo: 'test', submit_key: {key: 'public-key-fixture'}};
     },
+    topicPolicy(topicId) { calls.policy.push(topicId); return {topic_id:topicId,custom_fees:{fixed_fees:[]}}; },
     sign() { return Buffer.from('synthetic-signature'); }, verify() { return true; },
     ...overrides,
   };
@@ -25,14 +26,11 @@ const rejected = (promise, code) => assert.rejects(promise, {code});
 test('network defaults to testnet and accepts only named networks', () => {
   assert.equal(configuration({}).network, 'testnet');
   assert.equal(configuration({}).mirrorUrl, 'https://testnet.mirrornode.hedera.com');
-  for (const value of ['unknown', 'toString', 'constructor', '__proto__']) assert.throws(() => configuration({HEDERA_NETWORK: value}), {code: 'INVALID_NETWORK'});
+  for (const value of ['unknown', 'toString', 'constructor', '__proto__']) assert.throws(() => configuration({HEDERA_NETWORK: value}), {code: 'TESTNET_ONLY'});
 });
-test('mainnet requires explicit RADIX flag, constructor revalidates it', () => {
-  assert.throws(() => configuration({HEDERA_NETWORK: 'mainnet'}), {code: 'MAINNET_DISABLED'});
-  assert.throws(() => configuration({HEDERA_NETWORK: 'mainnet', RADIX_HEDERA_MAINNET_ENABLED: '1'}), {code: 'MAINNET_DISABLED'});
-  const permitted = configuration({HEDERA_NETWORK: 'mainnet', RADIX_HEDERA_MAINNET_ENABLED: 'true'});
-  assert.equal(permitted.network, 'mainnet');
-  if (process.env.RADIX_HEDERA_MAINNET_ENABLED !== 'true') assert.throws(() => new HederaLayer(permitted, {}), {code: 'MAINNET_DISABLED'});
+test('alpha rejects mainnet even with the former RADIX flag', () => {
+  for (const flag of [undefined,'true','1']) assert.throws(() => configuration({HEDERA_NETWORK:'mainnet',RADIX_HEDERA_MAINNET_ENABLED:flag}),{code:'TESTNET_ONLY'});
+  assert.throws(() => new HederaLayer({network:'mainnet'},{}),{code:'TESTNET_ONLY'});
 });
 test('all limits are bounded, fee is passed on every write', async () => {
   for (const invalid of ['0', '-1', '100000001', 'NaN', '1.5']) assert.throws(() => configuration({HEDERA_MAX_FEE_TINYBARS: invalid}), {code: 'INVALID_LIMIT'});
@@ -123,14 +121,12 @@ test('ambiguous send reconciles same transaction receipt and mirror', async () =
   assert.equal(f.calls.receipt.length,1); assert.equal(f.calls.mirror.length,1);
 });
 
-test('revoked RADIX mainnet switch refuses writes before prepare', async () => {
-  const previous = process.env.RADIX_HEDERA_MAINNET_ENABLED; const f = fixture();
+test('runtime network change refuses writes before prepare', async () => {
+  const previous = process.env.HEDERA_NETWORK; const f = fixture();
   try {
-    process.env.RADIX_HEDERA_MAINNET_ENABLED = 'true';
-    const layer = new HederaLayer(configuration({HEDERA_NETWORK:'mainnet',RADIX_HEDERA_MAINNET_ENABLED:'true'}),f.adapter);
-    delete process.env.RADIX_HEDERA_MAINNET_ENABLED;
-    await rejected(layer.createTopic('test'),'MAINNET_DISABLED');
-    await rejected(layer.submitRecord('0.0.456',Buffer.from('record')),'MAINNET_DISABLED');
+    process.env.HEDERA_NETWORK = 'mainnet';
+    await rejected(f.layer.createTopic('test'),'TESTNET_ONLY');
+    await rejected(f.layer.submitRecord('0.0.456',Buffer.from('record')),'TESTNET_ONLY');
     assert.equal(f.calls.prepare.length,0);
-  } finally { if (previous === undefined) delete process.env.RADIX_HEDERA_MAINNET_ENABLED; else process.env.RADIX_HEDERA_MAINNET_ENABLED = previous; }
+  } finally { if (previous === undefined) delete process.env.HEDERA_NETWORK; else process.env.HEDERA_NETWORK = previous; }
 });

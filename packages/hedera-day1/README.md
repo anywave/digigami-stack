@@ -4,7 +4,8 @@ Node lab/server tooling; it does not load into the Rust desktop or browser exten
 The full official JavaScript SDK is pinned to `@hiero-ledger/sdk` **2.90.1**
 (Apache-2.0; https://registry.npmjs.org/@hiero-ledger%2fsdk/latest and
 https://github.com/hiero-ledger/hiero-sdk-js/blob/main/LICENSE).
-The package remains private pending RADIX's exact public-content/license decision.
+The shipping SDK entrypoint exports `sdkLayer` only; construction/transport helpers
+are internal test seams. The package remains private pending RADIX's exact public-content/license decision.
 
 Run `npm ci --ignore-scripts`, `npm test`, and `npm run test:mutations` here.
 Node >=22.19 is required. Mirror HTTP uses the inherited HTTPS proxy and CA trust.
@@ -18,19 +19,26 @@ No account creation, faucet, funding, HBAR transfer or token operation is includ
 An absent/invalid environment produces fixed error codes without SDK diagnostics.
 SDK logging is silent. The smoke intentionally creates a lasting testnet topic.
 
-`HEDERA_NETWORK` defaults to `testnet`. Only the exact names `testnet` and `mainnet`
-are accepted. Future library mainnet selection requires the runtime switch
-`RADIX_HEDERA_MAINNET_ENABLED=true`, set only by RADIX; a process cannot establish a
-human's identity, so deployment access controls must restrict who can set it.
-The smoke commands refuse mainnet even with that switch. Mainnet stays OFF here.
+`HEDERA_NETWORK` defaults to `testnet`; only that exact value is accepted.
+Day-1 alpha has no mainnet client, endpoint or enabling switch. Obsolete authorization
+flags cannot enable it. Every shared send/resend and the concrete gRPC dispatch
+re-read the actual runtime network selection, including after signing and channel
+readiness waits. Official testnet targets are fixed per client; endpoint overrides
+and SDK routing mutations are refused. Any change away from testnet refuses the send. A future mainnet
+release requires a separate review and a signer outside an agent account.
 
 Each write has a fee limit (default/ceiling 100,000,000 tinybars), a fixed transaction
-ID with regeneration disabled, bounded SDK/wrapper attempts, a SUCCESS receipt and
-mandatory mirror proof. Failed/missing proof means unconfirmed, never success.
+ID with regeneration disabled, one shared retry budget, a SUCCESS receipt and
+mandatory mirror proof. SDK attempts are one and gRPC retries are disabled. Failed/missing proof means unconfirmed, never success.
 Retries reuse the prepared signed transaction; duplicate submission checks its receipt.
 An ambiguous send is reconciled against the same receipt before declaring failure.
 No new transaction ID is generated to recover an ambiguous result. Mirror polling is
 bounded; the caller must not blindly repeat a failed operation as a new write.
+Before every message, topic metadata must expose an empty custom-fee schedule.
+Unreadable, absent, malformed or nonempty schedules refuse preparation. The signed
+transaction also carries an explicit payer allowance of zero HBAR and no HTS
+denominations, so a schedule change cannot authorize custom fees at consensus.
+Network transaction fees remain separately capped. Topic creation sets no custom fees.
 Topic proof pins ID/memo/submit key; message proof pins ID/sequence/payer/exact bytes.
 The smoke signs its JSON record with the topic submit key, verifies it locally,
 then proves that the exact signed envelope reached the mirror. These controls do

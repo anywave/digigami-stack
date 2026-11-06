@@ -1,13 +1,14 @@
 import { timingSafeEqual } from 'node:crypto';
 
 export class HederaError extends Error {
-  constructor(code) { super(code); this.name = 'HederaError'; this.code = code; }
+  constructor(code) { super(code === 'TESTNET_ONLY' ? 'Day-1 alpha is testnet only; mainnet is unavailable.' : code); this.name = 'HederaError'; this.code = code; }
 }
 const fail = code => { throw new HederaError(code); };
-const networks = Object.freeze({
-  testnet: 'https://testnet.mirrornode.hedera.com',
-  mainnet: 'https://mainnet.mirrornode.hedera.com',
-});
+const endpointVariables = ['HEDERA_NODE_URL', 'HEDERA_MIRROR_URL', 'HEDERA_MIRROR_NODE_URL', 'HEDERA_GRPC_ENDPOINT'];
+export function authorizeSend(config) {
+  if (config.network !== 'testnet' || (process.env.HEDERA_NETWORK ?? 'testnet') !== 'testnet'
+    || endpointVariables.some(name => process.env[name] !== undefined)) fail('TESTNET_ONLY');
+}
 function integer(value, fallback, min, max) {
   const n = value === undefined ? fallback : Number(value);
   if (!Number.isSafeInteger(n) || n < min || n > max) fail('INVALID_LIMIT');
@@ -15,11 +16,11 @@ function integer(value, fallback, min, max) {
 }
 export function configuration(env = process.env) {
   const network = env.HEDERA_NETWORK ?? 'testnet';
-  if (!Object.hasOwn(networks, network)) fail('INVALID_NETWORK');
-  if (network === 'mainnet' && env.RADIX_HEDERA_MAINNET_ENABLED !== 'true') fail('MAINNET_DISABLED');
+  if (network !== 'testnet') fail('TESTNET_ONLY');
+  if (endpointVariables.some(name => env[name] !== undefined)) fail('TESTNET_ONLY');
   // No endpoint override: credentials and mirror proofs stay on the chosen network.
   return Object.freeze({
-    network, mirrorUrl: networks[network],
+    network, mirrorUrl: 'https://testnet.mirrornode.hedera.com',
     maxFeeTinybars: integer(env.HEDERA_MAX_FEE_TINYBARS, 100_000_000, 1, 100_000_000),
     maxAttempts: integer(env.HEDERA_MAX_ATTEMPTS, 3, 1, 5),
     mirrorAttempts: integer(env.HEDERA_MIRROR_ATTEMPTS, 20, 1, 60),
@@ -33,6 +34,7 @@ export async function retry(operation, attempts, delayMs, wait = sleep) {
   for (let n = 0; n < attempts; n++) {
     try { return await operation(); }
     catch (error) {
+      if (error?.code === 'TESTNET_ONLY') throw error;
       if (!transient(error) || n === attempts - 1) fail('OPERATION_FAILED');
       await wait(Math.min(delayMs * (2 ** n), 5000));
     }
@@ -55,7 +57,6 @@ export class HederaLayer {
       HEDERA_NETWORK: config.network, HEDERA_MAX_FEE_TINYBARS: config.maxFeeTinybars,
       HEDERA_MAX_ATTEMPTS: config.maxAttempts, HEDERA_MIRROR_ATTEMPTS: config.mirrorAttempts,
       HEDERA_RETRY_DELAY_MS: config.retryDelayMs, HEDERA_TIMEOUT_MS: config.timeoutMs,
-      RADIX_HEDERA_MAINNET_ENABLED: process.env.RADIX_HEDERA_MAINNET_ENABLED,
     });
     this.#config = checked; this.#adapter = adapter; this.#wait = wait;
   }
@@ -78,13 +79,16 @@ export class HederaLayer {
     fail('MIRROR_TIMEOUT');
   }
   async #write(kind, fields) {
-    if (this.#config.network === 'mainnet' && process.env.RADIX_HEDERA_MAINNET_ENABLED !== 'true') fail('MAINNET_DISABLED');
+    authorizeSend(this.#config);
     // Prepare exactly once. Retries resend the same signed transaction ID/bytes.
     let transaction;
     try { transaction = await this.#adapter.prepare(kind, fields, this.#config.maxFeeTinybars); }
     catch { fail('PREPARE_FAILED'); }
-    try { await retry(() => this.#adapter.execute(transaction), this.#config.maxAttempts, this.#config.retryDelayMs, this.#wait); }
-    catch { /* An ambiguous send can still have reached consensus: reconcile the same ID. */ }
+    try { await retry(() => { authorizeSend(this.#config); return this.#adapter.execute(transaction); }, this.#config.maxAttempts, this.#config.retryDelayMs, this.#wait); }
+    catch (error) {
+      if (error?.code === 'TESTNET_ONLY') throw error;
+      // An ambiguous send can still have reached consensus: reconcile the same ID.
+    }
     let receipt;
     try { receipt = await retry(() => this.#adapter.receipt(transaction), this.#config.maxAttempts, this.#config.retryDelayMs, this.#wait); }
     catch { throw Object.assign(new HederaError('WRITE_UNCONFIRMED'), {transactionId: transaction.transactionId?.toString()}); }
@@ -103,6 +107,14 @@ export class HederaLayer {
     if (!/^0\.0\.\d+$/.test(topicId)) fail('INVALID_TOPIC');
     const bytes = Buffer.from(record);
     if (!bytes.length || bytes.length > 1024) fail('INVALID_RECORD_SIZE');
+    let topic;
+    try { topic = await this.#adapter.topicPolicy(topicId); } catch { fail('TOPIC_FEE_POLICY_UNREADABLE'); }
+    if (topic?.topic_id !== topicId || !topic.custom_fees || Array.isArray(topic.custom_fees)
+      || Object.keys(topic.custom_fees).some(key => !['created_timestamp', 'fixed_fees'].includes(key))
+      || (Object.hasOwn(topic.custom_fees, 'created_timestamp')
+        && (typeof topic.custom_fees.created_timestamp !== 'string' || !/^\d{1,10}(\.\d{1,9})?$/.test(topic.custom_fees.created_timestamp)))
+      || !Array.isArray(topic.custom_fees.fixed_fees)
+      || topic.custom_fees.fixed_fees.length !== 0) fail('TOPIC_CUSTOM_FEES_FORBIDDEN');
     const receipt = await this.#write('submitRecord', {topicId, bytes});
     const sequence = String(receipt.sequence ?? '');
     if (!/^[1-9]\d*$/.test(sequence)) fail('INVALID_MESSAGE_RECEIPT');

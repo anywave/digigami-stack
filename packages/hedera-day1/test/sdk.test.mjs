@@ -10,11 +10,10 @@ import { configuration } from '../src/index.mjs';
 
 test('invalid network never calls SDK client factory', () => {
   let calls = 0;
-  const factory = {forTestnet() { calls++; }, forMainnet() { calls++; }};
-  for (const network of ['bad','constructor','toString','__proto__'])
-    assert.throws(() => makeClient({network},factory), {code:'INVALID_NETWORK'});
-  if (process.env.RADIX_HEDERA_MAINNET_ENABLED !== 'true')
-    assert.throws(() => makeClient({network:'mainnet'},factory), {code:'MAINNET_DISABLED'});
+  const factory = {forTestnet() { calls++; }, forMainnet() { assert.fail('alpha must never construct a mainnet client'); }};
+  for (const network of ['mainnet','bad','constructor','toString','__proto__'])
+    assert.throws(() => makeClient({network},factory), {code:'TESTNET_ONLY'});
+  assert.throws(() => makeClient({network:'mainnet',RADIX_HEDERA_MAINNET_ENABLED:'true'},factory), {code:'TESTNET_ONLY'});
   assert.equal(calls,0);
 });
 test('SDK adapter requires runtime environment credentials', () => {
@@ -30,7 +29,7 @@ test('SDK adapter requires runtime environment credentials', () => {
   } finally { closeSync(fd); rmSync(dir,{recursive:true,force:true}); }
 });
 test('real SDK transaction pins fee, submit key, single chunk and stable ID offline', async () => {
-  const client = Client.forTestnet();
+  const client = makeClient(configuration({}));
   const account = AccountId.fromString('0.0.123');
   // Public fixture only; fake signer supplies bytes without any private key.
   const publicKey = PublicKey.fromStringED25519('01'.repeat(32));

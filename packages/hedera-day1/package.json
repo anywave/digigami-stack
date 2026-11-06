@@ -3,15 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=22.19.0"},
-  "exports": {".": "./src/index.mjs", "./sdk": "./src/sdk.mjs"},
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./sdk": "./src/public.mjs"
+  },
   "scripts": {
-    "test": "node test/layer.test.mjs && node test/sdk.test.mjs",
+    "test": "node test/layer.test.mjs && node test/sdk.test.mjs && node test/fixes.test.mjs",
     "test:mutations": "node scripts/mutations.mjs",
     "smoke:digigami": "node scripts/smoke.mjs digigami",
     "smoke:latticeworks": "node scripts/smoke.mjs latticeworks",
     "smoke:token-auditor": "node scripts/smoke.mjs token-auditor",
     "smoke:mobi": "node scripts/smoke.mjs mobi-connect"
   },
-  "dependencies": {"@hiero-ledger/sdk": "2.90.1", "undici": "8.12.4"}
+  "dependencies": {
+    "@hiero-ledger/sdk": "2.90.1",
+    "undici": "8.12.4",
+    "@grpc/grpc-js": "1.13.6"
+  }
 }

@@ -8,7 +8,7 @@ let layer;
 try {
   const product = process.argv[2];
   if (!products.has(product)) throw new HederaError('INVALID_PRODUCT');
-  if (configuration().network !== 'testnet') throw new HederaError('SMOKE_TESTNET_ONLY');
+  configuration();
   if (process.env.HEDERA_TESTNET_THROWAWAY !== 'true') throw new HederaError('THROWAWAY_TESTNET_ACCOUNT_REQUIRED');
   layer = sdkLayer();
   const runId = randomUUID();
@@ -22,6 +22,6 @@ try {
     consensusTimestamp: result.consensusTimestamp, recordBase64: record.toString('base64')}));
 } catch (error) {
   // Do not stringify SDK errors: SDK diagnostic objects may contain signing state.
-  console.error(JSON.stringify({status: 'BLOCKED_OR_FAILED', code: error instanceof HederaError ? error.code : 'SMOKE_FAILED'}));
+  console.error(JSON.stringify({status: 'BLOCKED_OR_FAILED', code: error instanceof HederaError ? error.code : 'SMOKE_FAILED', ...(error?.code === 'TESTNET_ONLY' ? {message:error.message} : {})}));
   process.exitCode = 1;
 } finally { await layer?.close(); }
