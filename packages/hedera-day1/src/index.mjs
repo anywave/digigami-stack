@@ -49,6 +49,18 @@ export function parseMirrorMessage(value) {
   if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) fail('INVALID_MIRROR_MESSAGE');
   return Buffer.from(value, 'base64');
 }
+export function topicKeyRequest(publicKeyHex, publicKeyType) {
+  const sizes = {ED25519: 64, ECDSA_SECP256K1: 66};
+  if (!Object.hasOwn(sizes, publicKeyType) || typeof publicKeyHex !== 'string'
+    || publicKeyHex.length !== sizes[publicKeyType] || !/^[0-9a-f]+$/.test(publicKeyHex)) fail('INVALID_TOPIC_KEYS');
+  return Object.freeze({admin: null, submit: Object.freeze({_type: publicKeyType, key: publicKeyHex})});
+}
+function mirrorKeyMatches(actual, expected) {
+  if (expected === null) return actual === null;
+  return actual !== null && typeof actual === 'object' && !Array.isArray(actual)
+    && Object.keys(actual).length === 2 && Object.hasOwn(actual, '_type') && Object.hasOwn(actual, 'key')
+    && actual._type === expected._type && actual.key === expected.key;
+}
 export class HederaLayer {
   #adapter; #config; #wait;
   constructor(config, adapter, wait = sleep) {
@@ -97,10 +109,13 @@ export class HederaLayer {
   }
   async createTopic(memo) {
     if (typeof memo !== 'string' || Buffer.byteLength(memo) > 100) fail('INVALID_MEMO');
-    const receipt = await this.#write('createTopic', {memo});
+    const requestedKeys = topicKeyRequest(this.#adapter.publicKeyHex, this.#adapter.publicKeyType);
+    const receipt = await this.#write('createTopic', {memo, topicKeys: requestedKeys});
     if (!/^0\.0\.\d+$/.test(receipt.topicId ?? '')) fail('INVALID_TOPIC_RECEIPT');
     await this.#poll(`/api/v1/topics/${receipt.topicId}`, value => value?.topic_id === receipt.topicId
-      && value.memo === memo && value.submit_key?.key === this.#adapter.publicKeyHex);
+      && value.memo === memo && Object.hasOwn(value, 'admin_key') && Object.hasOwn(value, 'submit_key')
+      && mirrorKeyMatches(value.admin_key, requestedKeys.admin)
+      && mirrorKeyMatches(value.submit_key, requestedKeys.submit));
     return Object.freeze({topicId: receipt.topicId, transactionId: receipt.transactionId});
   }
   async submitRecord(topicId, record) {

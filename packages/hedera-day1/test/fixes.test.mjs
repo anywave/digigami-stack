@@ -8,11 +8,11 @@ import { makeClient, prepareSdkTransaction, executeSdkTransaction } from '../src
 function fakeLayer({network = 'testnet', prepare, wait, policy} = {}) {
   const calls = {prepare:0, sends:[], policy:0};
   const adapter = {
-    operatorId:'0.0.123', publicKeyHex:'public-fixture',
+    operatorId:'0.0.123', publicKeyHex:'01'.repeat(32), publicKeyType:'ED25519',
     prepare: async () => { calls.prepare++; await prepare?.(); return {sameId:true}; },
     execute: () => { calls.sends.push((process.env.HEDERA_NETWORK ?? 'testnet') === 'testnet'); if (wait) throw {retryable:true}; },
     receipt: () => ({status:'SUCCESS',topicId:'0.0.456',sequence:'1'}),
-    mirror: () => ({topic_id:'0.0.456',memo:'test',submit_key:{key:'public-fixture'},sequence_number:1,payer_account_id:'0.0.123',message:Buffer.from('test').toString('base64')}),
+    mirror: () => ({topic_id:'0.0.456',memo:'test',admin_key:null,submit_key:{_type:'ED25519',key:'01'.repeat(32)},sequence_number:1,payer_account_id:'0.0.123',message:Buffer.from('test').toString('base64')}),
     topicPolicy: () => { calls.policy++; return policy ? policy() : {topic_id:'0.0.456',custom_fees:{fixed_fees:[]}}; },
   };
   const layer = new HederaLayer(configuration({HEDERA_NETWORK:network}), adapter, wait ?? (async () => {}));
@@ -138,6 +138,7 @@ test('F2 actual SDK BUSY network change prevents concrete RPC resend', async () 
   const config = configuration({});
   const f = rpcFixture({config,busy:true,revokeDuring:'busy'});
   const layer = new HederaLayer(config,{
+    publicKeyHex:key.publicKey.toStringRaw(),publicKeyType:'ED25519',
     prepare:() => prepareSdkTransaction(config,f.client,key,account,'createTopic',{memo:'test'},12345),
     execute:tx => executeSdkTransaction(config,f.client,tx),
     receipt:() => { assert.fail('network change must not be swallowed into receipt reconciliation'); },

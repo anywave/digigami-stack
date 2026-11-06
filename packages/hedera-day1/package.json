@@ -11,7 +11,7 @@
     "./sdk": "./src/public.mjs"
   },
   "scripts": {
-    "test": "node test/layer.test.mjs && node test/sdk.test.mjs && node test/fixes.test.mjs",
+    "test": "node test/layer.test.mjs && node test/sdk.test.mjs && node test/fixes.test.mjs && node test/topic-keys.test.mjs",
     "test:mutations": "node scripts/mutations.mjs",
     "smoke:digigami": "node scripts/smoke.mjs digigami",
     "smoke:latticeworks": "node scripts/smoke.mjs latticeworks",

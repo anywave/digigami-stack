@@ -7,11 +7,13 @@ One shared package serves Node lab/server consumers. It is not bundled into Rust
 applications or the extension. Existing `extension/options.js` hederaAnchor=false
 and the simplified SPIRAL verification stub remain unwired; these need product work.
 
-Validation completed: `npm test` passes 35 tests (15 fake-layer, 3 offline SDK and 17 fix regressions).
-`npm run test:mutations` kills 38/38 safety mutations. The harness checks syntax first,
+Validation completed: `npm test` passes 39 tests (15 fake-layer, 3 offline SDK and 21 fix regressions).
+`npm run test:mutations` kills 45/45 safety mutations. The harness checks syntax first,
 then requires an assertion failure; syntax/import errors/timeouts do not count.
 Tests cover testnet-only config and runtime network changes, runtime-only credentials, caps, retry identity,
 receipts, both mirror write proofs, payer/key pins, exact bytes and record signatures.
+Topic readback requires explicit null admin and the exact typed submit key requested
+on the actual SDK wire, with missing/malformed/contradictory evidence refused.
 A real SDK object is built offline with a public fixture and fake signer, with no
 private test key material. Ambiguous send reconciliation uses the same receipt/ID.
 
@@ -24,3 +26,5 @@ Hedera hosts and has no TCP destinations. Testnet proof remains BLOCKED.
 No HTS/NFT day-1 need was identified. No funding, accounts, payouts or tokens were made.
 
 F1/F2 corrections and immutable protocol references: see `HEDERA-DAY1-FIX-JS.md`.
+
+F4-R key-state correction: see `HEDERA-DAY1-FIX-2-JS.md`.

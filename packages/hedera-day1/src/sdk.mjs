@@ -2,7 +2,7 @@ import { Client, Hbar, PrivateKey, AccountId, TopicCreateTransaction,
   TopicMessageSubmitTransaction, TransactionId, TransactionReceiptQuery, Logger, LogLevel, CustomFeeLimit, CustomFixedFee, MaxAttemptsOrTimeoutError } from '@hiero-ledger/sdk';
 import { guardedChannel } from './transport.mjs';
 import { ProxyAgent, fetch } from 'undici';
-import { HederaError, configuration, HederaLayer, authorizeSend } from './index.mjs';
+import { HederaError, configuration, HederaLayer, authorizeSend, topicKeyRequest } from './index.mjs';
 
 function safeFailure(error) {
   const status = error?.status?.toString?.() ?? '';
@@ -30,6 +30,7 @@ export function sdkLayer() {
   const dispatcher = process.env.HTTPS_PROXY ? new ProxyAgent(process.env.HTTPS_PROXY) : undefined;
   const adapter = {
     operatorId: account.toString(), publicKeyHex: key.publicKey.toStringRaw(),
+    publicKeyType: key.publicKey.type === 'secp256k1' ? 'ECDSA_SECP256K1' : key.publicKey.type,
     async prepare(kind, fields, maxFeeTinybars) {
       return prepareSdkTransaction(config, client, key, account, kind, fields, maxFeeTinybars);
     },
@@ -70,6 +71,11 @@ export function makeClient(config, factory, rpc) {
 export async function prepareSdkTransaction(config, client, key, account, kind, fields, maxFeeTinybars) {
   authorizeSend(config); requireSafeClient(client);
   try {
+    if (kind === 'createTopic' && fields.topicKeys) {
+      const expected = topicKeyRequest(key.publicKey.toStringRaw(), key.publicKey.type === 'secp256k1' ? 'ECDSA_SECP256K1' : key.publicKey.type);
+      if (fields.topicKeys.admin !== expected.admin || fields.topicKeys.submit?._type !== expected.submit._type
+        || fields.topicKeys.submit?.key !== expected.submit.key) throw new HederaError('PREPARE_FAILED');
+    }
     const tx = kind === 'createTopic'
       ? guardedTransaction(TopicCreateTransaction, config).setTopicMemo(fields.memo).setSubmitKey(key.publicKey)
       : guardedTransaction(TopicMessageSubmitTransaction, config).setTopicId(fields.topicId).setMessage(fields.bytes).setMaxChunks(1)

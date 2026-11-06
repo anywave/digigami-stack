@@ -16,7 +16,7 @@ const mutations = [
   ['same transaction retry', '() => { authorizeSend(this.#config); return this.#adapter.execute(transaction); }', 'async () => { authorizeSend(this.#config); return this.#adapter.execute(await this.#adapter.prepare(kind, fields, this.#config.maxFeeTinybars)); }'],
   ['receipt check', "if (receipt.status !== 'SUCCESS') fail('RECEIPT_NOT_SUCCESS');", ''],
   ['topic mirror readback', 'await this.#poll(`/api/v1/topics/${receipt.topicId}`,', 'await Promise.resolve(null); false && await this.#poll(`/api/v1/topics/${receipt.topicId}`,'],
-  ['topic submit key pin', '&& value.submit_key?.key === this.#adapter.publicKeyHex', ''],
+  ['topic submit key pin', '&& mirrorKeyMatches(value.submit_key, requestedKeys.submit)', '', 'index.mjs', 'topic-keys.test.mjs', 'F4-R paired SDK wire refuses every contradictory admin and submit combination'],
   ['payer pin', '&& value.payer_account_id === this.#adapter.operatorId', ''],
   ['byte equality', '&& equalBytes(parseMirrorMessage(value.message), bytes)', ''],
   ['message mirror readback', 'const message = await this.#poll(`/api/v1/topics/${topicId}/messages/${sequence}`,', 'const message = {consensus_timestamp: null}; false && await this.#poll(`/api/v1/topics/${topicId}/messages/${sequence}`,'],
@@ -45,6 +45,13 @@ const mutations = [
   ['alpha endpoint environment config', "if (endpointVariables.some(name => env[name] !== undefined)) fail('TESTNET_ONLY');", '', 'index.mjs', 'fixes.test.mjs', 'alpha ignores obsolete enable flags and refuses endpoint environment overrides'],
   ['alpha endpoint environment at send', '|| endpointVariables.some(name => process.env[name] !== undefined)', '', 'index.mjs', 'fixes.test.mjs', 'alpha endpoint environment change during readiness refuses concrete send'],
   ['alpha guarded SDK helper clients', 'authorizeSend(config); requireSafeClient(client);', 'authorizeSend(config);', 'sdk.mjs', 'fixes.test.mjs', 'alpha SDK helpers refuse arbitrary unguarded clients'],
+  ['F4-R absent admin pin', '&& mirrorKeyMatches(value.admin_key, requestedKeys.admin)', '', 'index.mjs', 'topic-keys.test.mjs', 'F4-R paired SDK wire refuses every contradictory admin and submit combination'],
+  ['F4-R key type comparison', 'actual._type === expected._type', 'true', 'index.mjs', 'topic-keys.test.mjs', 'F4-R paired SDK wire refuses every contradictory admin and submit combination'],
+  ['F4-R key bytes comparison', 'actual.key === expected.key', 'true', 'index.mjs', 'topic-keys.test.mjs', 'F4-R paired SDK wire refuses every contradictory admin and submit combination'],
+  ['F4-R malformed key object', 'Object.keys(actual).length === 2', 'true', 'index.mjs', 'topic-keys.test.mjs', 'F4-R paired SDK wire refuses every contradictory admin and submit combination'],
+  ['F4-R request and wire agreement', "if (fields.topicKeys.admin !== expected.admin || fields.topicKeys.submit?._type !== expected.submit._type\n        || fields.topicKeys.submit?.key !== expected.submit.key) throw new HederaError('PREPARE_FAILED');", '', 'sdk.mjs', 'topic-keys.test.mjs', 'F4-R SDK builder rejects key metadata that contradicts its actual create request'],
+  ['F4-R SDK requested admin absence', '.setTopicMemo(fields.memo).setSubmitKey(key.publicKey)', '.setTopicMemo(fields.memo).setSubmitKey(key.publicKey).setAdminKey(key.publicKey)', 'sdk.mjs', 'topic-keys.test.mjs', 'F4-R paired SDK wire confirms explicit absent admin and exact typed submit'],
+  ['F4-R immutable requested key state', 'return Object.freeze({admin: null, submit: Object.freeze({_type: publicKeyType, key: publicKeyHex})});', 'return {admin: null, submit: {_type: publicKeyType, key: publicKeyHex}};', 'index.mjs', 'topic-keys.test.mjs', 'F4-R requested key states stay frozen across asynchronous preparation'],
 ];
 let failed = false;
 for (const [name, before, after, target = 'index.mjs', suite = 'layer.test.mjs', expected] of mutations) {

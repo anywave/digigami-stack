@@ -39,7 +39,9 @@ Unreadable, absent, malformed or nonempty schedules refuse preparation. The sign
 transaction also carries an explicit payer allowance of zero HBAR and no HTS
 denominations, so a schedule change cannot authorize custom fees at consensus.
 Network transaction fees remain separately capped. Topic creation sets no custom fees.
-Topic proof pins ID/memo/submit key; message proof pins ID/sequence/payer/exact bytes.
+Topic proof pins ID/memo and both requested key states: explicit null admin and
+exact typed submit key. Missing/malformed evidence or an unexpected admin refuses
+confirmation. Message proof pins ID/sequence/payer/exact bytes.
 The smoke signs its JSON record with the topic submit key, verifies it locally,
 then proves that the exact signed envelope reached the mirror. These controls do
 not verify a product's semantic root, offline verifier or wallet ownership contract.

@@ -6,7 +6,7 @@ const config = () => configuration({HEDERA_MIRROR_ATTEMPTS: '2', HEDERA_RETRY_DE
 function fixture(overrides = {}) {
   const calls = {prepare: [], execute: [], receipt: [], mirror: [], policy: []};
   const adapter = {
-    operatorId: '0.0.123', publicKeyHex: 'public-key-fixture',
+    operatorId: '0.0.123', publicKeyHex: '01'.repeat(32), publicKeyType: 'ED25519',
     prepare(kind, fields, fee) { const tx = {kind, fields, fee}; calls.prepare.push(tx); return tx; },
     execute(tx) { calls.execute.push(tx); },
     receipt(tx) { calls.receipt.push(tx); return {status: 'SUCCESS', topicId: '0.0.456', sequence: '7', transactionId: 'fixed-id'}; },
@@ -14,7 +14,7 @@ function fixture(overrides = {}) {
       calls.mirror.push(path);
       if (path.endsWith('/messages/7')) return {topic_id: '0.0.456', sequence_number: 7,
         payer_account_id: '0.0.123', message: Buffer.from('record').toString('base64'), consensus_timestamp: '1.1'};
-      return {topic_id: '0.0.456', memo: 'test', submit_key: {key: 'public-key-fixture'}};
+      return {topic_id: '0.0.456', memo: 'test', admin_key: null, submit_key: {_type:'ED25519', key: '01'.repeat(32)}};
     },
     topicPolicy(topicId) { calls.policy.push(topicId); return {topic_id:topicId,custom_fees:{fixed_fees:[]}}; },
     sign() { return Buffer.from('synthetic-signature'); }, verify() { return true; },
@@ -43,7 +43,7 @@ test('fake smoke creates keyed topic, signs record and verifies exact mirror byt
   const {layer, calls} = fixture();
   const record = await layer.signedRecord({synthetic: true});
   const envelope = JSON.parse(record);
-  assert.equal(envelope.publicKey, 'public-key-fixture');
+  assert.equal(envelope.publicKey, '01'.repeat(32));
   assert.equal(envelope.signature, Buffer.from('synthetic-signature').toString('base64'));
   const topic = await layer.createTopic('test');
   const result = await layer.submitRecord(topic.topicId, Buffer.from('record'));
@@ -80,7 +80,7 @@ test('mirror eventual consistency retries, missing proof fails closed', async ()
   await rejected(fixture({mirror: () => null}).layer.submitRecord('0.0.456', Buffer.from('record')), 'MIRROR_TIMEOUT');
 });
 test('topic proof pins topic, memo and submit key', async () => {
-  const good = {topic_id: '0.0.456', memo: 'test', submit_key: {key: 'public-key-fixture'}};
+  const good = {topic_id: '0.0.456', memo: 'test', admin_key: null, submit_key: {_type:'ED25519', key: '01'.repeat(32)}};
   for (const replacement of [{topic_id:'0.0.999'}, {memo:'other'}, {submit_key:{key:'other-public-key'}}]) {
     await rejected(fixture({mirror: () => ({...good,...replacement})}).layer.createTopic('test'), 'MIRROR_MISMATCH');
   }
